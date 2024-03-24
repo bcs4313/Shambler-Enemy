@@ -15,6 +15,7 @@ using static UnityEngine.GraphicsBuffer;
 using System;
 using UnityEngine.AI;
 using GameNetcodeStuff;
+using ExampleEnemy.src.MoaiNormal;
 
 namespace ExampleEnemy
 {
@@ -46,22 +47,30 @@ namespace ExampleEnemy
             var MoaiBlueTerminalNode = Assets.MainAssetBundle.LoadAsset<TerminalNode>("MoaiBlueTN");
             var MoaiBlueTerminalKeyword = Assets.MainAssetBundle.LoadAsset<TerminalKeyword>("MoaiBlueTK");
 
+            var MoaiRed = Assets.MainAssetBundle.LoadAsset<EnemyType>("MoaiRed");
+            var MoaiRedTerminalNode = Assets.MainAssetBundle.LoadAsset<TerminalNode>("MoaiRed");
+            var MoaiRedTerminalKeyword = Assets.MainAssetBundle.LoadAsset<TerminalKeyword>("MoaiRed");
+
             // debug phase
             Debug.Log("EX BUNDLE: " + Assets.MainAssetBundle.ToString());
             Debug.Log("EX ENEMY: " + ExampleEnemy);
             Debug.Log("EX TK: " + tlTerminalKeyword);
             Debug.Log("EX TN: " + tlTerminalNode);
-            Debug.Log("BLUE ENEMY: " + ExampleEnemy);
-            Debug.Log("BLUE TK: " + tlTerminalKeyword);
-            Debug.Log("BLUE TN: " + tlTerminalNode);
+            Debug.Log("BLUE ENEMY: " + MoaiBlue);
+            Debug.Log("BLUE TK: " + MoaiBlueTerminalNode);
+            Debug.Log("BLUE TN: " + MoaiBlueTerminalKeyword);
+            Debug.Log("RED ENEMY: " + MoaiRed);
+            Debug.Log("RED TK: " + MoaiRedTerminalNode);
+            Debug.Log("RED TN: " + MoaiRedTerminalKeyword);
 
             // register phase 
             NetworkPrefabs.RegisterNetworkPrefab(ExampleEnemy.enemyPrefab);
             NetworkPrefabs.RegisterNetworkPrefab(MoaiBlue.enemyPrefab);
 
             // rarity range is 0-100 normally
-            RegisterEnemy(ExampleEnemy, (int)(20 / moaiGlobalRarity.Value), LevelTypes.All, SpawnType.Daytime, tlTerminalNode, tlTerminalKeyword);
-            RegisterEnemy(MoaiBlue, (int)(27 / moaiGlobalRarity.Value), LevelTypes.All, SpawnType.Outside, MoaiBlueTerminalNode, MoaiBlueTerminalKeyword);  // not common enough
+            RegisterEnemy(ExampleEnemy, (int)(14 / moaiGlobalRarity.Value), LevelTypes.All, SpawnType.Daytime, tlTerminalNode, tlTerminalKeyword);
+            RegisterEnemy(MoaiBlue, (int)(27 / moaiGlobalRarity.Value), LevelTypes.All, SpawnType.Outside, MoaiBlueTerminalNode, MoaiBlueTerminalKeyword);
+            RegisterEnemy(MoaiRed, (int)(6 / moaiGlobalRarity.Value), LevelTypes.All, SpawnType.Outside, MoaiRedTerminalNode, MoaiRedTerminalKeyword); 
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
 
             // Required by https://github.com/EvaisaDev/UnityNetcodePatcher maybe?
@@ -79,168 +88,8 @@ namespace ExampleEnemy
                 }
             }
             Debug.Log("MOAI: Registering Moai Net Messages");
-            // bind network messages
-            LC_API.Networking.Network.RegisterMessage<moaiSoundPkg>("moaisoundplay", true, (long_identifier, moaiPkg) =>
-            {
-                // ai.NetworkObjectId synchronizes across moai
-                ExampleEnemyAI target = null;
-                Debug.Log("MOAI: received moaisound pkg from host: " + moaiPkg.netId.ToString() + " :: " + moaiPkg.soundName);
-                ExampleEnemyAI[] moais = GameObject.FindObjectsOfType<ExampleEnemyAI>();
-                for (int i = 0; i < moais.Length; i++)
-                {
-                    ExampleEnemyAI ai = moais[i];
-                    if (ai.NetworkObjectId == moaiPkg.netId)
-                    {
-                        target = ai;
-                    }
-                }
-                if (target == null)
-                {
-                    Debug.LogError("moaisoundplay call failed:: " + moaiPkg.netId.ToString() + " :: " + moaiPkg.soundName);
-                    return;
-                }
-
-                switch (moaiPkg.soundName)
-                {
-                    case "creatureSFX":
-                        target.stopAllSound();
-                        target.creatureSFX.Play();
-                        break;
-                    case "creatureVoice":
-                        target.stopAllSound();
-                        target.creatureVoice.Play();
-                        break;
-                    case "creatureFood":
-                        target.creatureSFX.Stop();
-                        target.creatureVoice.Stop();
-                        target.creatureFood.Play();
-                        break;
-                    case "creatureEat":
-                        Debug.Log("Calling creatureEat on " + target + " :: " + target.creatureEat);
-                        target.creatureSFX.Stop();
-                        target.creatureVoice.Stop();
-                        target.creatureEat.Play();
-                        break;
-                    case "creatureEatHuman":
-                        Debug.Log("Calling creatureEatHuman on " + target + " :: " + target.creatureEatHuman);
-                        target.creatureSFX.Stop();
-                        target.creatureVoice.Stop();
-                        target.creatureEatHuman.Play();
-                        break;
-                }
-            });
-
-            LC_API.Networking.Network.RegisterMessage<moaiSizePkg>("moaisizeset", true, (long_identifier, moaiSizePkg) =>
-            {
-                ExampleEnemyAI target = null;
-                Debug.Log("MOAI: received moaisize pkg from host: " + moaiSizePkg.netId.ToString() + " :: " + moaiSizePkg.size);
-                ExampleEnemyAI[] moais = GameObject.FindObjectsOfType<ExampleEnemyAI>();
-                for (int i = 0; i < moais.Length; i++)
-                {
-                    ExampleEnemyAI ai = moais[i];
-                    if (ai.NetworkObjectId == moaiSizePkg.netId)
-                    {
-                        target = ai;
-                    }
-                }
-                if (target == null)
-                {
-                    Debug.LogError("moaisizeset call failed:: " + moaiSizePkg.netId.ToString() + " :: " + moaiSizePkg.size);
-                    return;
-                }
-                target.gameObject.transform.localScale *= moaiSizePkg.size;
-                target.gameObject.GetComponent<NavMeshAgent>().height *= moaiSizePkg.size;
-
-                target.creatureSFX.pitch /= moaiSizePkg.pitchAlter;
-                target.creatureVoice.pitch /= moaiSizePkg.pitchAlter;
-
-                target.creatureFood = target.grabSource("CreatureFood");
-                target.creatureEat = target.grabSource("CreatureEat");
-                target.creatureEatHuman = target.grabSource("CreatureEatHuman");
-
-                target.creatureFood.pitch /= moaiSizePkg.pitchAlter;
-                target.creatureEat.pitch /= moaiSizePkg.pitchAlter;
-                target.creatureEatHuman.pitch /= moaiSizePkg.pitchAlter;
-            });
-
-            LC_API.Networking.Network.RegisterMessage<moaiAttachBodyPkg>("moaiattachbody", true, (long_identifier, moaiAttachBodyPkg) =>
-            {
-                ExampleEnemyAI target = null;
-                Debug.Log("MOAI: received moaiattachbody pkg from host: " + moaiAttachBodyPkg.netId.ToString() + " :: " + moaiAttachBodyPkg.humanNetId);
-                ExampleEnemyAI[] moais = GameObject.FindObjectsOfType<ExampleEnemyAI>();
-                for (int i = 0; i < moais.Length; i++)
-                {
-                    ExampleEnemyAI ai = moais[i];
-                    if (ai.NetworkObjectId == moaiAttachBodyPkg.netId)
-                    {
-                        target = ai;
-                    }
-                }
-                if (target == null)
-                {
-                    Debug.LogError("moaisizeset call failed:: " + moaiAttachBodyPkg.netId.ToString() + " :: " + moaiAttachBodyPkg.humanNetId);
-                    return;
-                }
-
-                for (int i = 0; i < RoundManager.Instance.playersManager.allPlayerScripts.Length; i++)
-                {
-                    PlayerControllerB player = RoundManager.Instance.playersManager.allPlayerScripts[i];
-
-                    if (player != null && player.name != null && player.transform != null)
-                    {
-                        if (player.NetworkObject.NetworkObjectId == moaiAttachBodyPkg.humanNetId)
-                        {
-                            Debug.Log("MOAI: Successfully attached body with id = " + moaiAttachBodyPkg.humanNetId);
-                            player.deadBody.attachedLimb = player.deadBody.bodyParts[5];
-                            player.deadBody.attachedTo = target.eye.transform;
-                            player.deadBody.canBeGrabbedBackByPlayers = true;
-                        }
-                    }
-                }
-
-            });
-        }
-
-        [Serializable]
-        public class moaiSoundPkg
-        {
-            public ulong netId { get; set; }
-            public string soundName { get; set; }
-
-            public moaiSoundPkg(ulong _netId, string _soundName)
-            {
-                this.netId = _netId;
-                this.soundName = _soundName;
-            }
-        }
-
-        [Serializable]
-        public class moaiSizePkg
-        {
-            public ulong netId { get; set; }
-            public float size { get; set; }
-
-            public float pitchAlter { get; set; }
-
-            public moaiSizePkg(ulong _netId, float _size, float _pitchAlter)
-            {
-                this.netId = _netId;
-                this.size = _size;
-                this.pitchAlter = _pitchAlter;
-            }
-        }
-
-        [Serializable]
-        public class moaiAttachBodyPkg
-        {
-            public ulong netId { get; set; }
-            public ulong humanNetId { get; set; }
-
-            public moaiAttachBodyPkg(ulong _netId, ulong _humanNetId)
-            {
-                this.netId = _netId;
-                this.humanNetId = _humanNetId;
-            }
+            MoaiNormalNet.setup();
+            MoaiRedNet.setup();
         }
 
         // SETTINGS SECTION

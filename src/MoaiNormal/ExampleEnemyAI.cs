@@ -7,8 +7,9 @@ using UnityEngine.AI;
 using UnityEngine.UIElements;
 using LC_API;
 using static ExampleEnemy.Plugin;
+using static ExampleEnemy.src.MoaiNormal.MoaiNormalNet;
 
-namespace ExampleEnemy
+namespace ExampleEnemy.src.MoaiNormal
 {
 
     // You may be wondering, how does the Example Enemy know it is from class ExampleEnemyAI?
@@ -16,13 +17,14 @@ namespace ExampleEnemy
     // Asset bundles cannot contain scripts, so our script lives here. It is important to get the
     // reference right, or else it will not find this file. See the guide for more information.
 
-    class RedEnemyAI : EnemyAI {
+    class ExampleEnemyAI : EnemyAI
+    {
 
         // ThunderMoai vars
         float ticksTillThunder = 5; // ticks occur 5 times per second
 
         // updated once every 15 seconds
-        GrabbableObject[] source = UnityEngine.Object.FindObjectsOfType<GrabbableObject>();
+        GrabbableObject[] source;
         int sourcecycle = 75;
 
         // extra audio sources
@@ -40,28 +42,30 @@ namespace ExampleEnemy
 
         // We set these in our Asset Bundle, so we can disable warning CS0649:
         // Field 'field' is never assigned to, and will always have its default value 'value'
-        #pragma warning disable 0649
+#pragma warning disable 0649
         public Transform turnCompass;
         public Transform attackArea;
-        #pragma warning restore 0649
+#pragma warning restore 0649
         float timeSinceHittingLocalPlayer;
         float timeSinceNewRandPos;
         Vector3 positionRandomness;
         Vector3 StalkPos;
         System.Random enemyRandom;
         bool isDeadAnimationDone;
-        enum State {
+        enum State
+        {
             SearchingForPlayer,
             StickingInFrontOfPlayer,
             HeadSwingAttackInProgress,
         }
 
-        void LogIfDebugBuild(string text) {
-            #if DEBUG
+        void LogIfDebugBuild(string text)
+        {
+#if DEBUG
             Plugin.Logger.LogInfo(text);
-            #endif
+#endif
         }
-        
+
 
         public void stopAllSound()
         {
@@ -75,16 +79,16 @@ namespace ExampleEnemy
         public override void Start()
         {
             // spawnrate control for strictly the daytime moai
-            float trueSpawnProbability = rawSpawnProbability / ExampleEnemy.Plugin.moaiGlobalRarity.Value;
-            if (!this.gameObject.name.Contains("Blue") && UnityEngine.Random.Range(0.0f, 1.0f) >= trueSpawnProbability && rawSpawnGroup <= 0)
+            float trueSpawnProbability = rawSpawnProbability / moaiGlobalRarity.Value;
+            if (!gameObject.name.Contains("Blue") && UnityEngine.Random.Range(0.0f, 1.0f) >= trueSpawnProbability && rawSpawnGroup <= 0)
             {
-                LogIfDebugBuild("MOAI: spawncontrol -> probability failed at -> " + (trueSpawnProbability * 100) + "%");
+                LogIfDebugBuild("MOAI: spawncontrol -> probability failed at -> " + trueSpawnProbability * 100 + "%");
                 Destroy(gameObject);
                 return;
             }
             else
             {
-                LogIfDebugBuild("MOAI: spawncontrol -> probability SUCCESS at -> " + (trueSpawnProbability * 100) + "%");
+                LogIfDebugBuild("MOAI: spawncontrol -> probability SUCCESS at -> " + trueSpawnProbability * 100 + "%");
                 if (rawSpawnGroup > 0) { rawSpawnGroup--; }
                 else if (UnityEngine.Random.Range(0.0f, 1.0f) <= groupSpawnChance)
                 {
@@ -95,12 +99,12 @@ namespace ExampleEnemy
             base.Start();
 
             // additional audio sources
-            if (!this.creatureFood) { this.creatureFood = grabSource("CreatureFood") as AudioSource; }
-            if (!this.creatureEat) { this.creatureEat = grabSource("CreatureEat") as AudioSource; }
-            if (!this.creatureEatHuman) { this.creatureEatHuman = grabSource("CreatureEatHuman") as AudioSource; }
+            if (!creatureFood) { creatureFood = grabSource("CreatureFood") as AudioSource; }
+            if (!creatureEat) { creatureEat = grabSource("CreatureEat") as AudioSource; }
+            if (!creatureEatHuman) { creatureEatHuman = grabSource("CreatureEatHuman") as AudioSource; }
 
             // size variant modification
-            if (RoundManager.Instance.IsHost && UnityEngine.Random.Range(0.0f, 1.0f) <= Plugin.moaiGlobalSizeVar.Value)
+            if (RoundManager.Instance.IsHost && UnityEngine.Random.Range(0.0f, 1.0f) <= moaiGlobalSizeVar.Value)
             {
                 float newSize = 1;
                 if (UnityEngine.Random.Range(0.0f, 1.0f) < 0.5f)
@@ -115,33 +119,33 @@ namespace ExampleEnemy
                 if (newSize < 1)
                 {
                     var p = (double)newSize;
-                    LC_API.Networking.Network.Broadcast<moaiSizePkg>("moaisizeset", new moaiSizePkg(this.NetworkObject.NetworkObjectId, newSize, (float)Math.Pow(p, 0.3)));
+                    LC_API.Networking.Network.Broadcast("moaisizeset", new moaiSizePkg(NetworkObject.NetworkObjectId, newSize, (float)Math.Pow(p, 0.3)));
                 }
                 else
                 {
-                    LC_API.Networking.Network.Broadcast<moaiSizePkg>("moaisizeset", new moaiSizePkg(this.NetworkObject.NetworkObjectId, newSize, newSize));
+                    LC_API.Networking.Network.Broadcast("moaisizeset", new moaiSizePkg(NetworkObject.NetworkObjectId, newSize, newSize));
                 }
             }
 
             //LogIfDebugBuild("Moai Enemy Spawned");
             // account for config binds
             // creature sfx is music, while creature voice is idle noises (yes its weird)
-            this.creatureVoice.volume = Plugin.moaiGlobalVoiceVol.Value;
-            this.creatureSFX.volume = Plugin.moaiGlobalMusicVol.Value / 1.3f;
-            this.creatureFood.volume = Plugin.moaiGlobalVoiceVol.Value;
-            this.creatureEat.volume = Plugin.moaiGlobalMusicVol.Value;
+            creatureVoice.volume = moaiGlobalVoiceVol.Value;
+            creatureSFX.volume = moaiGlobalMusicVol.Value / 1.3f;
+            creatureFood.volume = moaiGlobalMusicVol.Value;
+            creatureEat.volume = moaiGlobalMusicVol.Value;
 
             // enforce navmeshagent size
             if (RoundManager.Instance.IsHost)
             {
-                if (Plugin.moaiGlobalSize.Value < 1)
+                if (moaiGlobalSize.Value < 1)
                 {
-                    var p = (double)Plugin.moaiGlobalSize.Value;
-                    LC_API.Networking.Network.Broadcast<moaiSizePkg>("moaisizeset", new moaiSizePkg(this.NetworkObject.NetworkObjectId, Plugin.moaiGlobalSize.Value, (float)Math.Pow(p, 0.3)));
+                    var p = (double)moaiGlobalSize.Value;
+                    LC_API.Networking.Network.Broadcast("moaisizeset", new moaiSizePkg(NetworkObject.NetworkObjectId, moaiGlobalSize.Value, (float)Math.Pow(p, 0.3)));
                 }
                 else
                 {
-                    LC_API.Networking.Network.Broadcast<moaiSizePkg>("moaisizeset", new moaiSizePkg(this.NetworkObject.NetworkObjectId, Plugin.moaiGlobalSize.Value, Plugin.moaiGlobalSize.Value));
+                    LC_API.Networking.Network.Broadcast("moaisizeset", new moaiSizePkg(NetworkObject.NetworkObjectId, moaiGlobalSize.Value, moaiGlobalSize.Value));
                 }
             }
 
@@ -181,13 +185,11 @@ namespace ExampleEnemy
             {
                 //Debug.Log("looking at player");
                 turnCompass.LookAt(targetPlayer.gameplayCamera.transform.position);
-                //turnCompass.rotation *= Quaternion.Euler(0, -90, 0);  // forces moai to not be sideways since the import is sideways
             }
             if (stunNormalizedTimer > 0f)
             {
                 agent.speed = 0f;
             }
-            //turnCompass.GetRoot().rotation *= Quaternion.Euler(0, -90f, 0); // forces moai to not be sideways since the import is sideways
 
             switch (currentBehaviourStateIndex)
             {
@@ -205,7 +207,8 @@ namespace ExampleEnemy
         {
             //Debug.Log("AI Interval");
             base.DoAIInterval();
-            if (isEnemyDead) {
+            if (isEnemyDead)
+            {
                 return;
             };
 
@@ -217,25 +220,27 @@ namespace ExampleEnemy
             else
             {
                 //Debug.Log("MOAI: Refreshing Source -N- ");
-                this.source = UnityEngine.Object.FindObjectsOfType<GrabbableObject>();
+                source = FindObjectsOfType<GrabbableObject>();
                 sourcecycle = 75;
             }
 
-            switch(currentBehaviourStateIndex) {
+            switch (currentBehaviourStateIndex)
+            {
                 case (int)State.SearchingForPlayer:
-                    agent.speed = 3f * Plugin.moaiGlobalSpeed.Value;
+                    agent.speed = 3f * moaiGlobalSpeed.Value;
 
                     // sound switch
                     if (!creatureVoice.isPlaying)
                     {
                         //Debug.Log("MSOUND: creatureVoice");
-                        LC_API.Networking.Network.Broadcast<moaiSoundPkg>("moaisoundplay", new moaiSoundPkg(this.NetworkObject.NetworkObjectId, "creatureVoice"));
+                        LC_API.Networking.Network.Broadcast("moaisoundplay", new moaiSoundPkg(NetworkObject.NetworkObjectId, "creatureVoice"));
                     }
 
                     // object search and state switch;
                     if (getObj() || getPlayerCorpse()) { SwitchToBehaviourClientRpc((int)State.HeadSwingAttackInProgress); }
 
-                    if (FoundClosestPlayerInRange(28f)){
+                    if (FoundClosestPlayerInRange(28f))
+                    {
                         //LogIfDebugBuild("Start Target Player");
                         StopSearch(currentSearch);
                         SwitchToBehaviourClientRpc((int)State.StickingInFrontOfPlayer);
@@ -243,21 +248,22 @@ namespace ExampleEnemy
                     break;
 
                 case (int)State.StickingInFrontOfPlayer:
-                    agent.speed = 5.3f * Plugin.moaiGlobalSpeed.Value;
+                    agent.speed = 5.3f * moaiGlobalSpeed.Value;
 
                     // sound switch 
                     if (!creatureSFX.isPlaying)
                     {
                         //Debug.Log("MSOUND: creatureSFX");
-                        LC_API.Networking.Network.Broadcast<moaiSoundPkg>("moaisoundplay", new moaiSoundPkg(this.NetworkObject.NetworkObjectId, "creatureSFX"));
+                        LC_API.Networking.Network.Broadcast("moaisoundplay", new moaiSoundPkg(NetworkObject.NetworkObjectId, "creatureSFX"));
                     }
                     thunderTick();
 
                     // object search and state switch;
-                    if(getObj() || getPlayerCorpse()) { SwitchToBehaviourClientRpc((int)State.HeadSwingAttackInProgress);}
+                    if (getObj() || getPlayerCorpse()) { SwitchToBehaviourClientRpc((int)State.HeadSwingAttackInProgress); }
 
                     // Keep targetting closest player, unless they are over 20 units away and we can't see them.
-                    if (!TargetClosestPlayerInAnyCase() && !FoundClosestPlayerInRange(28f)) {
+                    if (!TargetClosestPlayerInAnyCase() && !FoundClosestPlayerInRange(28f))
+                    {
                         //LogIfDebugBuild("Stop Target Player");
                         StartSearch(transform.position);
                         SwitchToBehaviourClientRpc((int)State.SearchingForPlayer);
@@ -273,7 +279,7 @@ namespace ExampleEnemy
                         if (!creatureFood.isPlaying)
                         {
                             //Debug.Log("MSOUND: creatureFood");
-                            LC_API.Networking.Network.Broadcast<moaiSoundPkg>("moaisoundplay", new moaiSoundPkg(this.NetworkObject.NetworkObjectId, "creatureFood"));
+                            LC_API.Networking.Network.Broadcast("moaisoundplay", new moaiSoundPkg(NetworkObject.NetworkObjectId, "creatureFood"));
                         }
                     }
                     else
@@ -281,31 +287,31 @@ namespace ExampleEnemy
                         if (!creatureEat.isPlaying && eatingScrap)
                         {
                             //Debug.Log("MSOUND: creatureEat");
-                            LC_API.Networking.Network.Broadcast<moaiSoundPkg>("moaisoundplay", new moaiSoundPkg(this.NetworkObject.NetworkObjectId, "creatureEat"));
+                            LC_API.Networking.Network.Broadcast("moaisoundplay", new moaiSoundPkg(NetworkObject.NetworkObjectId, "creatureEat"));
                         }
-                        if(!creatureEatHuman.isPlaying && eatingHuman)
+                        if (!creatureEatHuman.isPlaying && eatingHuman)
                         {
                             //Debug.Log("MSOUND: creatureEatHuman");
-                            LC_API.Networking.Network.Broadcast<moaiSoundPkg>("moaisoundplay", new moaiSoundPkg(this.NetworkObject.NetworkObjectId, "creatureEatHuman"));
+                            LC_API.Networking.Network.Broadcast("moaisoundplay", new moaiSoundPkg(NetworkObject.NetworkObjectId, "creatureEatHuman"));
                         }
                         if (eatingTimer > 0)
                         {
                             eatingTimer--;
                         }
-                        else if(eatingTimer == 0)
+                        else if (eatingTimer == 0)
                         {
                             GrabbableObject devouredObj = getObj();
-                            if(devouredObj)
+                            if (devouredObj)
                             {
                                 devouredObj.OnNetworkDespawn();
-                                UnityEngine.GameObject.Destroy(devouredObj.NetworkObject);
-                                UnityEngine.GameObject.Destroy(devouredObj.propBody);
-                                UnityEngine.GameObject.Destroy(devouredObj.gameObject);
-                                UnityEngine.GameObject.Destroy(devouredObj);
+                                Destroy(devouredObj.NetworkObject);
+                                Destroy(devouredObj.propBody);
+                                Destroy(devouredObj.gameObject);
+                                Destroy(devouredObj);
                             }
 
                             PlayerControllerB ply2 = getPlayerCorpse();
-                            if(ply2)
+                            if (ply2)
                             {
                                 ply2.deadBody.DeactivateBody(false);
                             }
@@ -327,21 +333,21 @@ namespace ExampleEnemy
                     }
                     else
                     {
-     
+
                         if (ply)
                         {
                             //Debug.Log("MOAI: Heading to found Player");
-                            this.targetPlayer = null;
-                            this.targetNode = ply.deadBody.transform;
-                            this.SetDestinationToPosition(ply.deadBody.transform.position);
-                            if (Vector3.Distance(this.transform.position, ply.deadBody.transform.position) < (ply.deadBody.transform.localScale.magnitude + this.transform.localScale.magnitude))
+                            targetPlayer = null;
+                            targetNode = ply.deadBody.transform;
+                            SetDestinationToPosition(ply.deadBody.transform.position);
+                            if (Vector3.Distance(transform.position, ply.deadBody.transform.position) < ply.deadBody.transform.localScale.magnitude + transform.localScale.magnitude)
                             {
                                 if (!eatingHuman)
                                 {
                                     Debug.Log("MOAI: Attaching Body to Mouth");
                                     eatingTimer = 150;
-                                    LC_API.Networking.Network.Broadcast<moaiAttachBodyPkg>("moaiattachbody", new moaiAttachBodyPkg(this.NetworkObject.NetworkObjectId, ply.NetworkObject.NetworkObjectId));
-                                    LC_API.Networking.Network.Broadcast<moaiSoundPkg>("moaisoundplay", new moaiSoundPkg(this.NetworkObject.NetworkObjectId, "creatureEatHuman"));
+                                    LC_API.Networking.Network.Broadcast("moaiattachbody", new moaiAttachBodyPkg(NetworkObject.NetworkObjectId, ply.NetworkObject.NetworkObjectId));
+                                    LC_API.Networking.Network.Broadcast("moaisoundplay", new moaiSoundPkg(NetworkObject.NetworkObjectId, "creatureEatHuman"));
                                 }
                                 eatingHuman = true;
                             }
@@ -353,26 +359,26 @@ namespace ExampleEnemy
                         else if (obj)
                         {
                             //Debug.Log("MOAI: Heading to found Scrap");
-                            this.targetPlayer = null;
-                            this.targetNode = obj.transform;
-                            this.SetDestinationToPosition(obj.transform.position);
-                            if (Vector3.Distance(this.transform.position, obj.transform.position) < (obj.transform.localScale.magnitude + this.transform.localScale.magnitude))
+                            targetPlayer = null;
+                            targetNode = obj.transform;
+                            SetDestinationToPosition(obj.transform.position);
+                            if (Vector3.Distance(transform.position, obj.transform.position) < obj.transform.localScale.magnitude + transform.localScale.magnitude)
                             {
-                                if(obj.IsLocalPlayer)
+                                if (obj.IsLocalPlayer)
                                 {
                                     if (!eatingHuman)
                                     {
                                         Debug.Log("MOAI: Attaching Body to Mouth");
                                         eatingTimer = 150;
-                                        LC_API.Networking.Network.Broadcast<moaiAttachBodyPkg>("moaiattachbody", new moaiAttachBodyPkg(this.NetworkObject.NetworkObjectId, ply.NetworkObject.NetworkObjectId));
-                                        LC_API.Networking.Network.Broadcast<moaiSoundPkg>("moaisoundplay", new moaiSoundPkg(this.NetworkObject.NetworkObjectId, "creatureEatHuman"));
+                                        LC_API.Networking.Network.Broadcast("moaiattachbody", new moaiAttachBodyPkg(NetworkObject.NetworkObjectId, ply.NetworkObject.NetworkObjectId));
+                                        LC_API.Networking.Network.Broadcast("moaisoundplay", new moaiSoundPkg(NetworkObject.NetworkObjectId, "creatureEatHuman"));
                                     }
                                     eatingHuman = true;
                                 }
                                 else if (!eatingScrap)
                                 {
-                                    eatingTimer = ((int)(obj.scrapValue / 1.8)+15);
-                                    LC_API.Networking.Network.Broadcast<moaiSoundPkg>("moaisoundplay", new moaiSoundPkg(this.NetworkObject.NetworkObjectId, "creatureEat"));
+                                    eatingTimer = (int)(obj.scrapValue / 1.8) + 15;
+                                    LC_API.Networking.Network.Broadcast("moaisoundplay", new moaiSoundPkg(NetworkObject.NetworkObjectId, "creatureEat"));
                                 }
                                 eatingScrap = true;
                             }
@@ -387,7 +393,7 @@ namespace ExampleEnemy
                         eatingTimer = -1;
                     }
                     break;
-                    
+
                 default:
                     LogIfDebugBuild("This Behavior State doesn't exist!");
                     break;
@@ -405,7 +411,7 @@ namespace ExampleEnemy
                 {
 
                     var d = Vector3.Distance(transform.position, player.transform.position);
-                    if(player.deadBody != null && player.deadBody.isActiveAndEnabled)
+                    if (player.deadBody != null && player.deadBody.isActiveAndEnabled)
                     {
                         d = Vector3.Distance(transform.position, player.deadBody.transform.position);
                     }
@@ -433,7 +439,7 @@ namespace ExampleEnemy
                     GrabbableObject obj = source[i];
                     //LogIfDebugBuild(obj.name);
 
-                    if (Vector3.Distance(this.transform.position, obj.transform.position) < 20.0f && !obj.heldByPlayerOnServer)
+                    if (Vector3.Distance(transform.position, obj.transform.position) < 20.0f && !obj.heldByPlayerOnServer)
                     {
                         //Debug.Log("MOAI: Returning object -> " + obj.name);
                         return obj;
@@ -443,7 +449,7 @@ namespace ExampleEnemy
             catch (IndexOutOfRangeException)
             {
                 //Debug.Log("MOAI: Refreshing Source -L- ");
-                source = UnityEngine.Object.FindObjectsOfType<GrabbableObject>();
+                source = FindObjectsOfType<GrabbableObject>();
             }
             catch (NullReferenceException)
             {
@@ -456,7 +462,7 @@ namespace ExampleEnemy
         {
             RoundManager m = RoundManager.Instance;
 
-            if (!this.gameObject.name.Contains("Blue"))
+            if (!gameObject.name.Contains("Blue"))
             {
                 return;
             }
@@ -468,11 +474,11 @@ namespace ExampleEnemy
 
             //LogIfDebugBuild("MOAI: spawning LBolt");
             ticksTillThunder = Math.Min((float)Math.Pow(Vector3.Distance(transform.position, targetPlayer.transform.position), 1.75), 180);
-            Vector3 position = this.serverPosition;
-            position.y += (float)(this.enemyRandom.NextDouble() * ticksTillThunder * 0.2) - ticksTillThunder * 0.1f;
-            position.x += (float)(this.enemyRandom.NextDouble() * ticksTillThunder * 0.2) - ticksTillThunder * 0.1f;
+            Vector3 position = serverPosition;
+            position.y += (float)(enemyRandom.NextDouble() * ticksTillThunder * 0.2) - ticksTillThunder * 0.1f;
+            position.x += (float)(enemyRandom.NextDouble() * ticksTillThunder * 0.2) - ticksTillThunder * 0.1f;
 
-            GameObject weather = UnityEngine.GameObject.Find("TimeAndWeather");
+            GameObject weather = GameObject.Find("TimeAndWeather");
 
             // find "Stormy" in weather
             GameObject striker = null;
@@ -506,15 +512,17 @@ namespace ExampleEnemy
             }
         }
 
-        bool FoundClosestPlayerInRange(float range) {
+        bool FoundClosestPlayerInRange(float range)
+        {
 
             //  maybe better if  1.5f?
             TargetClosestPlayer(bufferDistance: 1.5f, requireLineOfSight: true);
-            if(targetPlayer == null) return false;
+            if (targetPlayer == null) return false;
             return targetPlayer != null && Vector3.Distance(transform.position, targetPlayer.transform.position) < range;
         }
-        
-        bool TargetClosestPlayerInAnyCase() {
+
+        bool TargetClosestPlayerInAnyCase()
+        {
             mostOptimalDistance = 23f;
             targetPlayer = null;
             for (int i = 0; i < StartOfRound.Instance.connectedPlayersAmount + 1; i++)
@@ -526,15 +534,17 @@ namespace ExampleEnemy
                     targetPlayer = StartOfRound.Instance.allPlayerScripts[i];
                 }
             }
-            if(targetPlayer == null) return false;
+            if (targetPlayer == null) return false;
             return true;
         }
 
-        void StickingInFrontOfPlayer(){
+        void StickingInFrontOfPlayer()
+        {
             // We only run this method for the host because I'm paranoid about randomness not syncing I guess
             // This is fine because the game does sync the position of the enemy.
             // Also the attack is a ClientRpc so it should always sync
-            if (targetPlayer == null || !IsOwner) {
+            if (targetPlayer == null || !IsOwner)
+            {
                 return;
             }
 
@@ -545,7 +555,8 @@ namespace ExampleEnemy
 
         public override void OnCollideWithPlayer(Collider other)
         {
-            if (timeSinceHittingLocalPlayer < 0.5f) {
+            if (timeSinceHittingLocalPlayer < 0.5f)
+            {
                 return;
             }
             PlayerControllerB playerControllerB = MeetsStandardPlayerCollisionConditions(other);
@@ -564,9 +575,9 @@ namespace ExampleEnemy
             }
         }
 
-        public AudioSource grabSource(String argname)
+        public AudioSource grabSource(string argname)
         {
-            var sources = this.GetComponentsInChildren<UnityEngine.AudioSource>();
+            var sources = GetComponentsInChildren<AudioSource>();
             for (int i = 0; i < sources.Length; i++)
             {
                 AudioSource s = sources[i];
