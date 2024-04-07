@@ -48,8 +48,8 @@ namespace ExampleEnemy
             var MoaiBlueTerminalKeyword = Assets.MainAssetBundle.LoadAsset<TerminalKeyword>("MoaiBlueTK");
 
             var MoaiRed = Assets.MainAssetBundle.LoadAsset<EnemyType>("MoaiRed");
-            var MoaiRedTerminalNode = Assets.MainAssetBundle.LoadAsset<TerminalNode>("MoaiRed");
-            var MoaiRedTerminalKeyword = Assets.MainAssetBundle.LoadAsset<TerminalKeyword>("MoaiRed");
+            var MoaiRedTerminalNode = Assets.MainAssetBundle.LoadAsset<TerminalNode>("MoaiRedTN");
+            var MoaiRedTerminalKeyword = Assets.MainAssetBundle.LoadAsset<TerminalKeyword>("MoaiRedTK");
 
             // debug phase
             Debug.Log("EX BUNDLE: " + Assets.MainAssetBundle.ToString());
@@ -59,18 +59,21 @@ namespace ExampleEnemy
             Debug.Log("BLUE ENEMY: " + MoaiBlue);
             Debug.Log("BLUE TK: " + MoaiBlueTerminalNode);
             Debug.Log("BLUE TN: " + MoaiBlueTerminalKeyword);
-            Debug.Log("RED ENEMY: " + MoaiRed);
-            Debug.Log("RED TK: " + MoaiRedTerminalNode);
-            Debug.Log("RED TN: " + MoaiRedTerminalKeyword);
+            //Debug.Log("RED ENEMY: " + MoaiRed);
+            //Debug.Log("RED TK: " + MoaiRedTerminalNode);
+            //Debug.Log("RED TN: " + MoaiRedTerminalKeyword);
+
+            UnityEngine.Random.InitState((int)System.DateTime.Now.Ticks);
 
             // register phase 
             NetworkPrefabs.RegisterNetworkPrefab(ExampleEnemy.enemyPrefab);
             NetworkPrefabs.RegisterNetworkPrefab(MoaiBlue.enemyPrefab);
+            //NetworkPrefabs.RegisterNetworkPrefab(MoaiRed.enemyPrefab);
 
             // rarity range is 0-100 normally
-            RegisterEnemy(ExampleEnemy, (int)(14 / moaiGlobalRarity.Value), LevelTypes.All, SpawnType.Daytime, tlTerminalNode, tlTerminalKeyword);
+            RegisterEnemy(ExampleEnemy, (int)(21 / moaiGlobalRarity.Value), LevelTypes.All, SpawnType.Daytime, tlTerminalNode, tlTerminalKeyword);
             RegisterEnemy(MoaiBlue, (int)(27 / moaiGlobalRarity.Value), LevelTypes.All, SpawnType.Outside, MoaiBlueTerminalNode, MoaiBlueTerminalKeyword);
-            RegisterEnemy(MoaiRed, (int)(6 / moaiGlobalRarity.Value), LevelTypes.All, SpawnType.Outside, MoaiRedTerminalNode, MoaiRedTerminalKeyword); 
+            //RegisterEnemy(MoaiRed, (int)(7 / moaiGlobalRarity.Value), LevelTypes.All, SpawnType.Daytime, MoaiRedTerminalNode, MoaiRedTerminalKeyword); 
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
 
             // Required by https://github.com/EvaisaDev/UnityNetcodePatcher maybe?

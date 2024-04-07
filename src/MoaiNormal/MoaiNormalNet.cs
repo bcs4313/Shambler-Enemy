@@ -53,6 +53,33 @@ namespace ExampleEnemy.src.MoaiNormal
             }
         }
 
+
+        [Serializable]
+        public class moaiDestroyBodyPkg
+        {
+            public ulong netId { get; set; }
+            public ulong humanNetId { get; set; }
+
+            public moaiDestroyBodyPkg(ulong _netId, ulong _humanNetId)
+            {
+                this.netId = _netId;
+                this.humanNetId = _humanNetId;
+            }
+        }
+
+        [Serializable]
+        public class moaiHaloPkg
+        {
+            public ulong netId { get; set; }
+            public bool active { get; set; }
+
+            public moaiHaloPkg(ulong _netId, bool _active)
+            {
+                this.netId = _netId;
+                this.active = _active;
+            }
+        }
+
         public static void setup()
         {
             LC_API.Networking.Network.RegisterMessage<moaiSoundPkg>("moaisoundplay", true, (long_identifier, moaiPkg) =>
@@ -102,6 +129,15 @@ namespace ExampleEnemy.src.MoaiNormal
                         target.creatureVoice.Stop();
                         target.creatureEatHuman.Play();
                         break;
+                    case "creatureHit":
+                        Debug.Log("Calling creatureHit on " + target + " :: " + target.creatureEatHuman);
+                        target.creatureHit.Play();
+                        break;
+                    case "creatureDeath":
+                        Debug.Log("Calling creatureDeath on " + target + " :: " + target.creatureEatHuman);
+                        target.stopAllSound();
+                        target.creatureDeath.Play();
+                        break;
                 }
             });
 
@@ -132,10 +168,14 @@ namespace ExampleEnemy.src.MoaiNormal
                 target.creatureFood = target.grabSource("CreatureFood");
                 target.creatureEat = target.grabSource("CreatureEat");
                 target.creatureEatHuman = target.grabSource("CreatureEatHuman");
+                target.creatureHit = target.grabSource("CreatureHit");
+                target.creatureDeath = target.grabSource("CreatureDeath");
 
                 target.creatureFood.pitch /= moaiSizePkg.pitchAlter;
                 target.creatureEat.pitch /= moaiSizePkg.pitchAlter;
                 target.creatureEatHuman.pitch /= moaiSizePkg.pitchAlter;
+                target.creatureHit.pitch /= moaiSizePkg.pitchAlter;
+                target.creatureDeath.pitch /= moaiSizePkg.pitchAlter;
             });
 
             LC_API.Networking.Network.RegisterMessage<moaiAttachBodyPkg>("moaiattachbody", true, (long_identifier, moaiAttachBodyPkg) =>
@@ -173,6 +213,49 @@ namespace ExampleEnemy.src.MoaiNormal
                     }
                 }
 
+            });
+
+
+            LC_API.Networking.Network.RegisterMessage<moaiDestroyBodyPkg>("moaidestroybody", true, (long_identifier, moaiDestroyBodyPkg) =>
+            {
+                ExampleEnemyAI target = null;
+                Debug.Log("MOAI: received moaidestroybody pkg from host: " + moaiDestroyBodyPkg.netId.ToString());
+
+                for (int i = 0; i < RoundManager.Instance.playersManager.allPlayerScripts.Length; i++)
+                {
+                    PlayerControllerB player = RoundManager.Instance.playersManager.allPlayerScripts[i];
+
+                    if (player != null && player.name != null && player.transform != null)
+                    {
+                        if (player.NetworkObject.NetworkObjectId == moaiDestroyBodyPkg.humanNetId)
+                        {
+                            Debug.Log("MOAI: Successfully destroyed body with id = " + moaiDestroyBodyPkg.humanNetId);
+                            player.deadBody.DeactivateBody(false);
+                        }
+                    }
+                }
+            });
+
+            LC_API.Networking.Network.RegisterMessage<moaiHaloPkg>("moaisethalo", true, (long_identifier, moaiHaloPkg) =>
+            {
+                ExampleEnemyAI target = null;
+                Debug.Log("MOAI: received moaisethalo pkg from host: " + moaiHaloPkg.netId.ToString());
+                ExampleEnemyAI[] moais = GameObject.FindObjectsOfType<ExampleEnemyAI>();
+                for (int i = 0; i < moais.Length; i++)
+                {
+                    ExampleEnemyAI ai = moais[i];
+                    if (ai.NetworkObjectId == moaiHaloPkg.netId)
+                    {
+                        target = ai;
+                    }
+                }
+                if (target == null)
+                {
+                    Debug.LogError("moaisethalo call failed:: " + moaiHaloPkg.netId.ToString());
+                    return;
+                }
+
+                target.setHalo(moaiHaloPkg.active);
             });
         }
     }

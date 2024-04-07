@@ -8,6 +8,8 @@ using UnityEngine.UIElements;
 using LC_API;
 using static ExampleEnemy.src.MoaiNormal.MoaiRedNet;
 using static ExampleEnemy.Plugin;
+using System.Threading.Tasks;
+using System.Linq;
 
 namespace ExampleEnemy.src.MoaiRed
 {
@@ -24,6 +26,12 @@ namespace ExampleEnemy.src.MoaiRed
         int sourcecycle = 75;
         bool preparing = false;
 
+        // blitz vars
+        Vector3 blitzTarget = Vector3.zero;
+        Vector3 startPosFromTarget = Vector3.zero;
+        int playerTargetSteps = 1;
+        float impatience = 0.0f;
+
         // extra audio sources
         public AudioSource creatureFood;
         public AudioSource creatureEat;
@@ -34,7 +42,7 @@ namespace ExampleEnemy.src.MoaiRed
         int eatingTimer = -1;
 
         float rawSpawnProbability = 0.166f; // forced probability to spawn, affecting true spawnrate
-        float groupSpawnChance = 0.18f;  // probability to form a group
+        float groupSpawnChance = 0.05f;  // probability to form a group
         int rawSpawnGroup = 0; // enables group spawn, ignoring probability
 
 
@@ -82,18 +90,18 @@ namespace ExampleEnemy.src.MoaiRed
             float trueSpawnProbability = rawSpawnProbability / moaiGlobalRarity.Value;
             if (!gameObject.name.Contains("Blue") && UnityEngine.Random.Range(0.0f, 1.0f) >= trueSpawnProbability && rawSpawnGroup <= 0)
             {
-                LogIfDebugBuild("MOAI: spawncontrol -> probability failed at -> " + trueSpawnProbability * 100 + "%");
+                LogIfDebugBuild("REDMOAI: spawncontrol -> probability failed at -> " + trueSpawnProbability * 100 + "%");
                 Destroy(gameObject);
                 return;
             }
             else
             {
-                LogIfDebugBuild("MOAI: spawncontrol -> probability SUCCESS at -> " + trueSpawnProbability * 100 + "%");
+                LogIfDebugBuild("REDMOAI: spawncontrol -> probability SUCCESS at -> " + trueSpawnProbability * 100 + "%");
                 if (rawSpawnGroup > 0) { rawSpawnGroup--; }
                 else if (UnityEngine.Random.Range(0.0f, 1.0f) <= groupSpawnChance)
                 {
                     rawSpawnGroup = UnityEngine.Random.RandomRangeInt(1, 4);
-                    LogIfDebugBuild("MOAI: Forming spawn cluster of size: " + rawSpawnGroup);
+                    LogIfDebugBuild("REDMOAI: Forming spawn cluster of size: " + rawSpawnGroup);
                 }
             }
             base.Start();
@@ -218,6 +226,8 @@ namespace ExampleEnemy.src.MoaiRed
             {
                 case (int)State.SearchingForPlayer:
                     agent.speed = 3f * moaiGlobalSpeed.Value;
+                    agent.acceleration = 8;
+                    agent.angularSpeed = 120;
 
                     // sound switch
                     if (!creatureVoice.isPlaying)
@@ -240,6 +250,24 @@ namespace ExampleEnemy.src.MoaiRed
                 case (int)State.Preparing:
                     agent.speed = 0;
 
+                    // object search and state switch;
+                    // notice that this means you can prevent a red moai from blitzing if he is given food
+                    if (getObj() || getPlayerCorpse()) {
+                        agent.speed = 3f * moaiGlobalSpeed.Value;
+                        preparing = false;
+                        SwitchToBehaviourClientRpc((int)State.HeadSwingAttackInProgress);
+                        return;
+                    }
+
+                    // Transition to Blitz if sound is no longer playing
+                    if (creatureSFX.time > 9.0 || (!creatureSFX.isPlaying && preparing))
+                    {
+                        LogIfDebugBuild("MOAIRED: Blitz Activated");
+                        preparing = false;
+                        SwitchToBehaviourClientRpc((int)State.Blitz);
+                        return;
+                    }
+
                     // sound switch 
                     if (!creatureSFX.isPlaying && !preparing)
                     {
@@ -247,24 +275,66 @@ namespace ExampleEnemy.src.MoaiRed
                         LC_API.Networking.Network.Broadcast("redMoaisoundplay", new redMoaiSoundPkg(NetworkObject.NetworkObjectId, "creatureSFX"));
                         preparing = true;
                     }
+
                     if (!preparing) { preparing = true; }
 
-                    // object search and state switch;
-                    // notice that this means you can prevent a red moai from blitzing if he is given food
-                    if (getObj() || getPlayerCorpse()) { SwitchToBehaviourClientRpc((int)State.HeadSwingAttackInProgress); }
-
-                    // Transition to Blitz if sound is no longer playing
-                    if (creatureSFX.time > 9.0 || (!creatureSFX.isPlaying && preparing))
-                    {
-                        LogIfDebugBuild("MOAIRED: Blitz Activated");
-                        StartSearch(transform.position);
-                        SwitchToBehaviourClientRpc((int)State.SearchingForPlayer);
-                        return;
-                    }
                     StickingInFrontOfPlayer();
                     break;
 
+                case (int)State.Blitz:
+                    agent.speed = 35f * moaiGlobalSpeed.Value;
+                    agent.acceleration *= 10;
+                    agent.angularSpeed *= 10;
+
+                    if(!creatureBlitz.isPlaying)
+                    {
+                        LC_API.Networking.Network.Broadcast("redMoaisoundplay", new redMoaiSoundPkg(NetworkObject.NetworkObjectId, "creatureBlitz"));
+                    }
+
+                    // in blitz, the target resets if blitzTarget is Vector3.zero
+                    if (blitzTarget == Vector3.zero)
+                    {
+                        impatience = 0;
+                        if (playerTargetSteps == 1)
+                        {
+                            GameObject randomNode = allAINodes[UnityEngine.Random.RandomRangeInt(0, allAINodes.Length)];
+                            blitzTarget = randomNode.transform.position;
+                            startPosFromTarget = this.transform.position;
+                            playerTargetSteps = 0;
+                            Debug.Log("red: target random pos");
+                        }
+                        else if (playerTargetSteps == 0)
+                        {
+                            blitzTarget = GetClosestPlayer(false, true, false).gameObject.transform.position;
+                            startPosFromTarget = this.transform.position;
+                            playerTargetSteps = 2;
+                            Debug.Log("red: target player");
+                        }
+                    }
+
+                    targetPlayer = null;
+                    SetDestinationToPosition(blitzTarget);
+
+                    // blitz reset
+                    if(Vector3.Distance(transform.position, blitzTarget) < (transform.localScale.magnitude + transform.localScale.magnitude + impatience))
+                    {
+                        blitzTarget = Vector3.zero;
+                    }
+                    else
+                    {
+                        impatience += 0.1f;
+                    }
+
+                    // blitz explosions
+                    // The explosion chains start when a moai is 2/3th of completion to position
+                    if (Vector3.Distance(transform.position, blitzTarget) < (Vector3.Distance(startPosFromTarget, blitzTarget) / 3))
+                    {
+                        explosionChain(UnityEngine.Random.Range(1, 3), UnityEngine.Random.Range(0, 300), UnityEngine.Random.Range(0, 400));
+                    }
+                    break;
+
                 case (int)State.HeadSwingAttackInProgress:
+                    agent.speed = 3f * moaiGlobalSpeed.Value;
                     // sound switch
                     if (!eatingHuman && !eatingScrap)
                     {
@@ -391,6 +461,41 @@ namespace ExampleEnemy.src.MoaiRed
                     break;
             }
         }
+        public async void explosionChain(int amount, int delay, int delayRandomness)
+        {
+            for (int i = 0; i < amount; i++)
+            {
+                Vector3 explosionPos = transform.position + UnityEngine.Vector3.up;
+                explosionPos.x += UnityEngine.Random.Range(-7.0f, 7.0f);
+                explosionPos.y += UnityEngine.Random.Range(-5.0f, 5.0f);
+                explosionPos.z += UnityEngine.Random.Range(-7.0f, 7.0f);
+                Landmine.SpawnExplosion(transform.position + UnityEngine.Vector3.up, true, 5.7f, 6.4f);
+                await Task.Delay(delay + UnityEngine.Random.Range(0, delayRandomness));
+            }
+        }
+
+        public Vector3 getRandomPlayerPos()
+        {
+            PlayerControllerB[] players = [];
+            for (int i = 0; i < RoundManager.Instance.playersManager.allPlayerScripts.Length; i++)
+            {
+                PlayerControllerB player = RoundManager.Instance.playersManager.allPlayerScripts[i];
+
+                if (player != null && player.name != null && player.transform != null)
+                {
+
+                    if(!player.isPlayerDead && !player.isInHangarShipRoom)
+                    {
+                        players.Append(player);
+                    }
+                }
+            }
+
+            if (players.Length > 0) { return players[UnityEngine.Random.RandomRangeInt(0, players.Length)].gameObject.transform.position; }
+            
+            return Vector3.zero;
+        }
+
         public PlayerControllerB getPlayerCorpse()
         {
             //Debug.Log("MOAI: Human Food Search");
