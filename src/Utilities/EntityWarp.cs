@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace MoaiEnemy.src
+namespace MoaiEnemy.src.Utilities
 {
     // Credit to xCeezyx for SendEnemyInside/Outside code! makes my life so much easier.
     // https://github.com/xCeezyx/LethalEscape/tree/main?tab=readme-ov-file
@@ -12,10 +12,10 @@ namespace MoaiEnemy.src
             float bestDistance = 99999999;
             EntranceTeleport bestTele = null;
             //--- FIND MAIN ENTERANCE ---
-            EntranceTeleport[] array = UnityEngine.Object.FindObjectsOfType<EntranceTeleport>(false);
+            EntranceTeleport[] array = Object.FindObjectsOfType<EntranceTeleport>(false);
             for (int j = 0; j < array.Length; j++)
             {
-                if(Vector3.Distance(__instance.transform.position, array[j].transform.position) < bestDistance)
+                if (Vector3.Distance(__instance.transform.position, array[j].transform.position) < bestDistance)
                 {
                     bestDistance = Vector3.Distance(__instance.transform.position, array[j].transform.position);
                     bestTele = array[j];
@@ -34,7 +34,7 @@ namespace MoaiEnemy.src
 
 
             //--- FIND BEST ENTRANCE ---
-            EntranceTeleport[] array = UnityEngine.Object.FindObjectsOfType<EntranceTeleport>(false);
+            EntranceTeleport[] array = Object.FindObjectsOfType<EntranceTeleport>(false);
             bool foundBest = false;
             for (int j = 0; j < array.Length; j++)
             {
@@ -75,7 +75,7 @@ namespace MoaiEnemy.src
 
         public static Transform findExitPoint(EntranceTeleport referenceDoor)
         {
-            EntranceTeleport[] array = UnityEngine.Object.FindObjectsOfType<EntranceTeleport>();
+            EntranceTeleport[] array = Object.FindObjectsOfType<EntranceTeleport>();
             for (int i = 0; i < array.Length; i++)
             {
                 if (array[i].isEntranceToBuilding != referenceDoor.isEntranceToBuilding && array[i].entranceId == referenceDoor.entranceId)
@@ -92,7 +92,7 @@ namespace MoaiEnemy.src
             __instance.allAINodes = GameObject.FindGameObjectsWithTag("OutsideAINode");
 
             //--- FIND ENTERANCE DOOR CLOSEST TO PLAYERS
-            EntranceTeleport[] array = UnityEngine.Object.FindObjectsOfType<EntranceTeleport>(false);
+            EntranceTeleport[] array = Object.FindObjectsOfType<EntranceTeleport>(false);
             float ClosestexitDistance = 999;
             for (int j = 0; j < array.Length; j++)
             {

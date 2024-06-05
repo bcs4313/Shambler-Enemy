@@ -7,6 +7,7 @@ using static MoaiEnemy.src.MoaiNormal.MoaiNormalNet;
 using static MoaiEnemy.Plugin;
 using Unity.Netcode;
 using UnityEngine.AI;
+using MoaiEnemy.src.Utilities;
 
 namespace MoaiEnemy.src.MoaiNormal
 {
@@ -56,8 +57,6 @@ namespace MoaiEnemy.src.MoaiNormal
         protected bool eatingScrap = false;
         protected bool eatingHuman = false;
         protected int eatingTimer = -1;
-
-        public static float rawSpawnProbability = 0f; // forced probability to spawn, affecting true spawnrate'
 
         // stamina mechancis
         protected float stamina = 0; // moai use stamina to chase the player
@@ -114,26 +113,6 @@ namespace MoaiEnemy.src.MoaiNormal
         {
             mostRecentPlayer = this.GetClosestPlayer();
             animator = this.gameObject.GetComponent<Animator>();
-
-
-            // spawnrate control for strictly the daytime moai
-            var outcome = UnityEngine.Random.Range(0.0f, 1.0f);
-            if (RoundManager.Instance.IsServer)
-            {
-                float trueSpawnProbability = rawSpawnProbability / moaiGlobalRarity.Value;
-                if ((!gameObject.name.Contains("Blue") || trueSpawnProbability <= 0) && outcome >= trueSpawnProbability)
-                {
-                    LogIfDebugBuild("NORM/BLUE MOAI: spawncontrol -> probability failed at -> " + trueSpawnProbability * 100 + "%");
-                    RoundManager.Instance.currentOutsideEnemyPower -= 1;
-                    Destroy(gameObject);
-                    return;
-                }
-                else
-                {
-                    LogIfDebugBuild("NORM/BLUE MOAI: spawncontrol -> probability SUCCESS at -> " + trueSpawnProbability * 100 +
-                        "% " + outcome);
-                }
-            }
 
             base.Start();
             if (RoundManager.Instance.IsServer)

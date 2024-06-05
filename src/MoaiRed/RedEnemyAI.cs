@@ -9,6 +9,7 @@ using static MoaiEnemy.Plugin;
 using System.Threading.Tasks;
 using System.Linq;
 using static MoaiEnemy.src.MoaiNormal.MoaiNormalNet;
+using LethalLib.Modules;
 
 namespace MoaiEnemy.src.MoaiNormal
 {
@@ -77,7 +78,7 @@ namespace MoaiEnemy.src.MoaiNormal
 
             if (isEnemyDead && playerHeld)
             {
-                letPlayerGo();
+                letGoOfPlayerClientRpc(playerHeld.NetworkObject.NetworkObjectId);
                 kidnapNode = null;
             }
 
@@ -180,25 +181,6 @@ namespace MoaiEnemy.src.MoaiNormal
             return true;
         }
 
-        private void letPlayerGo()
-        {
-            Debug.Log("RED MOAI: LetPlayerGo() called");
-            playerHeld.transform.parent = null;
-            tempHp = enemyHP;
-            blitzReset();
-            playerHeld.playerCollider.enabled = true;
-            afterEntranceTransport = false;
-
-            // the player needs to be on a navmesh spot (avoiding all collision bugs)
-            NavMeshHit hit;
-            var valid = UnityEngine.AI.NavMesh.SamplePosition(playerHeld.transform.position, out hit, 15f, NavMesh.AllAreas);
-            if (valid)
-            {
-                playerHeld.transform.position = hit.position;
-            }
-            playerHeld = null;
-        }
-
         public override void DoAIInterval()
         {
             if (isEnemyDead)
@@ -212,7 +194,7 @@ namespace MoaiEnemy.src.MoaiNormal
             {
                 if (playerHeld)
                 {
-                    letPlayerGo();
+                    letGoOfPlayerClientRpc(playerHeld.NetworkObject.NetworkObjectId);
                 }
             }
 
@@ -221,7 +203,7 @@ namespace MoaiEnemy.src.MoaiNormal
                 invalidCounter++;
                 if(invalidCounter > 30 && playerHeld)
                 {
-                    letPlayerGo();
+                    letGoOfPlayerClientRpc(playerHeld.NetworkObject.NetworkObjectId);
                 }
             }
             else
@@ -252,7 +234,7 @@ namespace MoaiEnemy.src.MoaiNormal
                         // stare state transfer
                         if (anger < 100)
                         {
-                            if (!swirlEffect.activeInHierarchy) { swirlEffect.SetActive(true); }
+                            if (!swirlEffect.activeInHierarchy) { toggleSwirlEffectClientRpc(true); }
                             
                             agent.speed = 0.01f;
                             if(playerOnRock(targetPlayer))
@@ -273,7 +255,7 @@ namespace MoaiEnemy.src.MoaiNormal
                             }
                             return;
                         }
-                        if (swirlEffect.activeInHierarchy) { swirlEffect.SetActive(false); }
+                        if (swirlEffect.activeInHierarchy) { toggleSwirlEffectClientRpc(false); }
 
                         // kidnap state transfer
                         if (anger >= 100 && playerIsAlone(targetPlayer) && playerIsDefenseless(targetPlayer) && !playerOnRock(targetPlayer) && (transform.localScale.x > 0.3) && (transform.localScale.x < 2.5))
@@ -299,7 +281,7 @@ namespace MoaiEnemy.src.MoaiNormal
                     }
                     else
                     {
-                        if (swirlEffect.activeInHierarchy) { swirlEffect.SetActive(false); }
+                        if (swirlEffect.activeInHierarchy) { toggleSwirlEffectClientRpc(false); }
                         if (anger > 0)
                         {
                             anger -= 1.3f;  // 20 seconds from 100 anger to completely deaggro
@@ -328,19 +310,16 @@ namespace MoaiEnemy.src.MoaiNormal
                         if (Vector3.Distance(transform.position, targetPlayer.transform.position) < targetPlayer.transform.localScale.magnitude + Math.Max(transform.localScale.magnitude, 1))
                         {
                             playerHeld = targetPlayer;
-                            playerHeld.DamagePlayer(-30);
                             Debug.Log("RED MOAI: Attaching living player to mouth.");
-                            playerHeld.transform.parent = playerGrabPoint;
+                            attachPlayerClientRpc(playerHeld.NetworkObject.NetworkObjectId, true);
                         }
                     }
                     else
                     {
                         Debug.Log("RED MOAI: PlayerHeld -> " + !playerHeld.isInsideFactory);
-                        playerHeld.playerCollider.enabled = false;
 
                         // to ensure the player stays attached...
-                        playerHeld.transform.position = playerGrabPoint.position;
-                        playerHeld.transform.parent = playerGrabPoint;
+                        attachPlayerClientRpc(playerHeld.NetworkObject.NetworkObjectId);
 
                         // substate - Transporting Player
                         if (!afterEntranceTransport)
@@ -365,7 +344,7 @@ namespace MoaiEnemy.src.MoaiNormal
                         {
                             Debug.Log("RED MOAI: Let go of player -> " + agent.isPathStale + " -- " + kidnapNode);
                             // for now... let the player go
-                            letPlayerGo();
+                            letGoOfPlayerClientRpc(playerHeld.NetworkObject.NetworkObjectId);
                         }
                     }
                     break;
@@ -443,7 +422,7 @@ namespace MoaiEnemy.src.MoaiNormal
 
                         blitzTarget = hit.position;
                         Plugin.networkHandler.s_moaiSoundPlay.SendAllClients(new moaiSoundPkg(NetworkObject.NetworkObjectId, "creatureBlitz"));
-                        Landmine.SpawnExplosion(transform.position + UnityEngine.Vector3.up, true, 5.7f, 6.4f);
+                        spawnExplosionClientRpc();
                         startPosFromTarget = this.transform.position;
 
                         if (playerTargetSteps >= 3)
@@ -486,6 +465,72 @@ namespace MoaiEnemy.src.MoaiNormal
             stamina = 0;
             enemyHP = tempHp;
             blitzTarget = Vector3.zero;
+        }
+
+        [ClientRpc]
+        public void spawnExplosionClientRpc()
+        {
+            Landmine.SpawnExplosion(transform.position + UnityEngine.Vector3.up, true, 5.7f, 6.4f);
+        }
+
+        [ClientRpc]
+        public void attachPlayerClientRpc(ulong playerId, bool healPlayer = false)
+        {
+            RoundManager m = RoundManager.Instance;
+            PlayerControllerB[] players = m.playersManager.allPlayerScripts;
+            for(int i = 0; i < players.Length; i++)
+            {
+                PlayerControllerB player = players[i];
+                if (player.NetworkObject.NetworkObjectId == playerId)
+                {
+                    player.transform.position = playerGrabPoint.position;
+                    player.transform.parent = playerGrabPoint;
+                    player.playerCollider.enabled = false;
+                    if(healPlayer) { player.DamagePlayer(-30); }
+                    return;
+                }
+            }
+        }
+
+        [ClientRpc]
+        public void letGoOfPlayerClientRpc(ulong playerId)
+        {
+            PlayerControllerB targetPlayer = null;
+            RoundManager m = RoundManager.Instance;
+            PlayerControllerB[] players = m.playersManager.allPlayerScripts;
+            for (int i = 0; i < players.Length; i++)
+            {
+                PlayerControllerB player = players[i];
+                if (player.NetworkObject.NetworkObjectId == playerId)
+                {
+                    targetPlayer = player;
+                }
+
+            }
+            targetPlayer.transform.parent = null;
+            targetPlayer.playerCollider.enabled = true;
+
+            // the player needs to be on a navmesh spot (avoiding all collision bugs)
+            NavMeshHit hit;
+            var valid = UnityEngine.AI.NavMesh.SamplePosition(targetPlayer.transform.position, out hit, 15f, NavMesh.AllAreas);
+            if (valid)
+            {
+                targetPlayer.transform.position = hit.position;
+            }
+
+            if (RoundManager.Instance.IsServer)
+            {
+                blitzReset();
+                tempHp = enemyHP;
+                afterEntranceTransport = false;
+                playerHeld = null;
+            }
+        }
+
+        [ClientRpc]
+        public void toggleSwirlEffectClientRpc(bool value)
+        {
+            swirlEffect.SetActive(value);
         }
 
         public override void HitEnemy(int force = 1, PlayerControllerB playerWhoHit = null, bool playHitSFX = false, int hitID = -1)

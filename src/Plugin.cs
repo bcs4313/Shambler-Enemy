@@ -13,43 +13,62 @@ using LethalConfig.ConfigItems.Options;
 using LethalConfig;
 using MoaiEnemy.src.MoaiNormal;
 using System.Collections.Generic;
+using MoaiEnemy.src.Utilities;
 
 namespace MoaiEnemy
 {
     [BepInDependency("LethalNetworkAPI")]
     [BepInDependency(LethalLib.Plugin.ModGUID)]
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
-    public class Plugin : BaseUnityPlugin {
-        public static Harmony _harmony; 
+    public class Plugin : BaseUnityPlugin
+    {
+        public static Harmony _harmony;
         public static EnemyType ExampleEnemy;
         public static new ManualLogSource Logger;
 
         public static MoaiNormalNet networkHandler = new MoaiNormalNet();
 
+        // defined assets
+        public static EnemyType MoaiEnemy;
+        public static TerminalNode tlTerminalNode;
+        public static TerminalKeyword tlTerminalKeyword;
+
+        public static EnemyType MoaiBlue;
+        public static TerminalNode MoaiBlueTerminalNode;
+        public static TerminalKeyword MoaiBlueTerminalKeyword;
+
+        public static EnemyType MoaiRed;
+        public static TerminalNode MoaiRedTerminalNode;
+        public static TerminalKeyword MoaiRedTerminalKeyword;
+
+        public static float rawSpawnMultiplier = 0f;
+
+
         public void LogIfDebugBuild(string text)
         {
-        #if DEBUG
+#if DEBUG
             Plugin.Logger.LogInfo(text);
-        #endif
+#endif
         }
 
-        private void Awake() {
+        private void Awake()
+        {
             Logger = base.Logger;
             Assets.PopulateAssets();
             bindVars();
 
             // asset loading phase
-            var MoaiEnemy = Assets.MainAssetBundle.LoadAsset<EnemyType>("MoaiEnemy");
-            var tlTerminalNode = Assets.MainAssetBundle.LoadAsset<TerminalNode>("MoaiEnemyTN");
-            var tlTerminalKeyword = Assets.MainAssetBundle.LoadAsset<TerminalKeyword>("MoaiEnemyTK");
+            MoaiEnemy = Assets.MainAssetBundle.LoadAsset<EnemyType>("MoaiEnemy");
+            tlTerminalNode = Assets.MainAssetBundle.LoadAsset<TerminalNode>("MoaiEnemyTN");
+            tlTerminalKeyword = Assets.MainAssetBundle.LoadAsset<TerminalKeyword>("MoaiEnemyTK");
 
-            var MoaiBlue = Assets.MainAssetBundle.LoadAsset<EnemyType>("MoaiBlue");
-            var MoaiBlueTerminalNode = Assets.MainAssetBundle.LoadAsset<TerminalNode>("MoaiBlueTN");
-            var MoaiBlueTerminalKeyword = Assets.MainAssetBundle.LoadAsset<TerminalKeyword>("MoaiBlueTK");
+            MoaiBlue = Assets.MainAssetBundle.LoadAsset<EnemyType>("MoaiBlue");
+            MoaiBlueTerminalNode = Assets.MainAssetBundle.LoadAsset<TerminalNode>("MoaiBlueTN");
+            MoaiBlueTerminalKeyword = Assets.MainAssetBundle.LoadAsset<TerminalKeyword>("MoaiBlueTK");
 
-            var MoaiRed = Assets.MainAssetBundle.LoadAsset<EnemyType>("MoaiRed");
-            var MoaiRedTerminalNode = Assets.MainAssetBundle.LoadAsset<TerminalNode>("MoaiRedTN");
-            var MoaiRedTerminalKeyword = Assets.MainAssetBundle.LoadAsset<TerminalKeyword>("MoaiRedTK");
+            MoaiRed = Assets.MainAssetBundle.LoadAsset<EnemyType>("MoaiRed");
+            MoaiRedTerminalNode = Assets.MainAssetBundle.LoadAsset<TerminalNode>("MoaiRedTN");
+            MoaiRedTerminalKeyword = Assets.MainAssetBundle.LoadAsset<TerminalKeyword>("MoaiRedTK");
 
             // debug phase
             Debug.Log("MOAI ENEMY BUNDLE: " + Assets.MainAssetBundle.ToString());
@@ -71,12 +90,15 @@ namespace MoaiEnemy
             NetworkPrefabs.RegisterNetworkPrefab(MoaiRed.enemyPrefab);
 
             // rarity range is 0-100 normally
-            RegisterEnemy(MoaiEnemy, (int)(120 / moaiGlobalRarity.Value), LevelTypes.All, SpawnType.Daytime, tlTerminalNode, tlTerminalKeyword);
-            RegisterEnemy(MoaiBlue, (int)(14 / moaiGlobalRarity.Value), LevelTypes.All, SpawnType.Outside, MoaiBlueTerminalNode, MoaiBlueTerminalKeyword);
-            RegisterEnemy(MoaiRed, (int)(700 / moaiGlobalRarity.Value), LevelTypes.All, SpawnType.Daytime, MoaiRedTerminalNode, MoaiRedTerminalKeyword); 
+            rawSpawnMultiplier = RawspawnHandler.getSpawnMultiplier();
+            RegisterEnemy(MoaiEnemy, (int)(0), LevelTypes.All, SpawnType.Daytime, tlTerminalNode, tlTerminalKeyword);
+            RegisterEnemy(MoaiBlue, (int)(0), LevelTypes.All, SpawnType.Outside, MoaiBlueTerminalNode, MoaiBlueTerminalKeyword);
+            RegisterEnemy(MoaiRed, (int)(0), LevelTypes.All, SpawnType.Outside, MoaiRedTerminalNode, MoaiRedTerminalKeyword);
+
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
 
-            // Required by https://github.com/EvaisaDev/UnityNetcodePatcher maybe?
+
+            // Required by https://github.com/EvaisaDev/UnityNetcodePatcher
             var types = Assembly.GetExecutingAssembly().GetTypes();
             foreach (var type in types)
             {
@@ -93,37 +115,34 @@ namespace MoaiEnemy
             Debug.Log("MOAI: Registering Moai Net Messages");
             networkHandler.setup();
 
+            // actual logic for setting rarity
             On.RoundManager.LoadNewLevel += (On.RoundManager.orig_LoadNewLevel orig, global::RoundManager self, int randomSeed, global::SelectableLevel newLevel) =>
             {
-                setSpawnProbabilities();
+                if (newLevel.PlanetName.Contains("Easter"))
+                {
+                    rawSpawnMultiplier = RawspawnHandler.getSpawnMultiplier(true);
+                }
+                else
+                {
+                    rawSpawnMultiplier = RawspawnHandler.getSpawnMultiplier();
+                }
+
+                var normPkg = new RawspawnHandler.enemyRarityPkg();
+                normPkg.name = MoaiEnemy.name;
+                normPkg.rarity = (int)(120 * baseRarity.Value * rawSpawnMultiplier);
+
+                var bluePkg = new RawspawnHandler.enemyRarityPkg();
+                bluePkg.name = MoaiBlue.name;
+                bluePkg.rarity = (int)(46 * blueRarity.Value * rawSpawnMultiplier);
+
+                var redPkg = new RawspawnHandler.enemyRarityPkg();
+                redPkg.name = MoaiRed.name;
+                redPkg.rarity = (int)(28 * redRarity.Value * rawSpawnMultiplier);
+
+                RawspawnHandler.setLevelSpawnWeights([normPkg], [bluePkg, redPkg]);
+
                 orig.Invoke(self, randomSeed, newLevel);
             };
-        }
-
-        
-
-        static void setSpawnProbabilities()
-        {
-            float r = UnityEngine.Random.RandomRange(0.0f, 1.0f + (moaiGlobalRarity.Value  - 1));
-
-            if (r < 0.06)
-            {
-                MoaiEnemyAI.rawSpawnProbability = 1.0f;
-            } 
-            else if (r < 0.12)
-            {
-                MoaiEnemyAI.rawSpawnProbability = 0.5f;
-            }
-            else if (r < 0.20)
-            {
-                MoaiEnemyAI.rawSpawnProbability = 0.25f;
-            }
-            else
-            {
-                MoaiEnemyAI.rawSpawnProbability = 0f;
-            }
-
-            Debug.Log("MOAI rawspawn multiplier: " + MoaiEnemyAI.rawSpawnProbability);
         }
 
         // SETTINGS SECTION
@@ -131,16 +150,22 @@ namespace MoaiEnemy
         public static ConfigEntry<float> moaiGlobalSize;
         public static ConfigEntry<float> moaiGlobalSizeVar;
         public static ConfigEntry<float> moaiGlobalMusicVol;
-        public static ConfigEntry<float> moaiGlobalRarity;
         public static ConfigEntry<float> moaiGlobalSpeed;
+        public static ConfigEntry<string> moaiSpawnDistribution;
+        public static ConfigEntry<float> baseRarity;
+        public static ConfigEntry<float> blueRarity;
+        public static ConfigEntry<float> redRarity;
 
         public void bindVars()
         {
             moaiGlobalMusicVol = Config.Bind("Global", "Enemy Sound Volume", 0.6f, "Changes the volume of all moai sounds. May make moai more sneaky as well.");
             moaiGlobalSizeVar = Config.Bind("Global", "Size Variant Chance", 0.2f, "The chance of a moai to spawn in a randomly scaled size. Affects their pitch too.");
             moaiGlobalSize = Config.Bind("Global", "Size Multiplier", 1f, "Changes the size of all moai models. Scales pretty violently. Affects SFX pitch.");
-            moaiGlobalRarity = Config.Bind("Global", "Enemy Rarity Multiplier", 1f, "How rare are moai? A 2x multiplier makes them 2x more rare, and a 0.25x multiplier would make them 4x more common.");
             moaiGlobalSpeed = Config.Bind("Global", "Enemy Speed Multiplier", 1f, "Changes the speed of all moai. 4x would mean they are 4 times faster, 0.5x would be 2 times slower.");
+            moaiSpawnDistribution = Config.Bind("Advanced", "Enemy Spawn Distribution", "4%100%, 6%50%, 10%25%", "For fine tuning spawn multipliers day to day. Value is a comma separated list. Each value follows the format C%M%, with C being the chance for the spawnrate multiplier to activate on a day (0-100%) and M being the multiplier (0-inf%). If a multiplier isn't activated, the spawnrate will be 0%.");
+            baseRarity = Config.Bind("Variants", "Basic Moai Spawnrate", 1f, "Changes the spawnrate of the variant.");
+            blueRarity = Config.Bind("Variants", "Blue Moai Spawnrate", 1f, "Changes the spawnrate of the variant.");
+            redRarity = Config.Bind("Variants", "Red Moai Spawnrate", 1f, "Changes the spawnrate of the variant.");
 
             var sizeSlider = new FloatSliderConfigItem(moaiGlobalSize, new FloatSliderOptions
             {
@@ -164,37 +189,63 @@ namespace MoaiEnemy
                 Max = 1f
             });
 
-            var raritySlider = new FloatSliderConfigItem(moaiGlobalRarity, new FloatSliderOptions
-            {
-                RequiresRestart = true,
-                Min = 0.05f,
-                Max = 10f
-            });
-
             var speedSlider = new FloatSliderConfigItem(moaiGlobalSpeed, new FloatSliderOptions
             {
                 RequiresRestart = false,
                 Min = 0.0f,
                 Max = 5f,
             });
-            
+
+
+            var spawnEntry = new TextInputFieldConfigItem(moaiSpawnDistribution, new TextInputFieldOptions
+            {
+                RequiresRestart = false,
+            });
+
+            var baseEntry = new FloatInputFieldConfigItem(baseRarity, new FloatInputFieldOptions
+            {
+                RequiresRestart = false,
+                Min = 0.0f,
+                Max = 10000f,
+            });
+
+            var redEntry = new FloatInputFieldConfigItem(redRarity, new FloatInputFieldOptions
+            {
+                RequiresRestart = false,
+                Min = 0.0f,
+                Max = 10000f,
+            });
+
+            var blueEntry = new FloatInputFieldConfigItem(blueRarity, new FloatInputFieldOptions
+            {
+                RequiresRestart = false,
+                Min = 0.0f,
+                Max = 10000f,
+            });
+
             LethalConfigManager.AddConfigItem(volumeSlider);
             LethalConfigManager.AddConfigItem(sizeSlider);
             LethalConfigManager.AddConfigItem(sizeVarSlider);
-            LethalConfigManager.AddConfigItem(raritySlider);
             LethalConfigManager.AddConfigItem(speedSlider);
+            LethalConfigManager.AddConfigItem(baseEntry);
+            LethalConfigManager.AddConfigItem(blueEntry);
+            LethalConfigManager.AddConfigItem(redEntry);
+            LethalConfigManager.AddConfigItem(spawnEntry);
         }
-    }
 
-    public static class Assets {
-        public static AssetBundle MainAssetBundle = null;
-        public static void PopulateAssets() {
-            string sAssemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        public static class Assets
+        {
+            public static AssetBundle MainAssetBundle = null;
+            public static void PopulateAssets()
+            {
+                string sAssemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
-            MainAssetBundle = AssetBundle.LoadFromFile(Path.Combine(sAssemblyLocation, "moaibundle"));
-            if (MainAssetBundle == null) {
-                Plugin.Logger.LogError("Failed to load custom assets.");
-                return;
+                MainAssetBundle = AssetBundle.LoadFromFile(Path.Combine(sAssemblyLocation, "moaibundle"));
+                if (MainAssetBundle == null)
+                {
+                    Plugin.Logger.LogError("Failed to load custom assets.");
+                    return;
+                }
             }
         }
     }
