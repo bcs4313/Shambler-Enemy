@@ -4,12 +4,12 @@
 		<!-- This is the most likely to work in Unity games, for the most part; you can ignore it. -->
     <TargetFramework>netstandard2.1</TargetFramework>
 		<!-- This is the name of your mod. This will be used by tcli when building our Thunderstore package. -->
-    <AssemblyName>MoaiEnemy</AssemblyName>
+    <AssemblyName>Shambler</AssemblyName>
 		<!-- This assembly description doesn't show up on Thunderstore. -->
     <!-- Configure description for Thunderstore at ./Thunderstore/thunderstore.toml -->
-    <Description>Moai Enemy for Lethal Company.</Description>
+    <Description>Shambler Enemy for Lethal Company.</Description>
 		<!-- This is the version of your plugin. This will be used by tcli when building our Thunderstore package. -->
-    <Version>1.6.6</Version>
+    <Version>1.0.0</Version>
 		<!-- This is required for BepInEx to load us properly. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<!-- This allows you to use C#11 features, for the most part. -->
@@ -25,12 +25,12 @@
   <PropertyGroup>
 	  <!-- Your Thunderstore Team name. This will be used by tcli when building our Thunderstore package. -->
     <ThunderstoreTeam>bcs4313</ThunderstoreTeam>
-    <PackageId>MoaiEnemy</PackageId>
-    <AssemblyVersion>1.6.6</AssemblyVersion>
-    <FileVersion>1.6.6</FileVersion>
+    <PackageId>Shambler</PackageId>
+    <AssemblyVersion>1.0.0</AssemblyVersion>
+    <FileVersion>1.0.0</FileVersion>
     <Authors>bcs4313</Authors>
-    <Title>Moai Enemy</Title>
-    <Product>MoaiEnemy</Product>
+    <Title>Shambler</Title>
+    <Product>Shambler</Product>
   </PropertyGroup>
 
   <ItemGroup>
@@ -47,42 +47,6 @@
 
   <!-- Get references to DLL files. -->
   <ItemGroup>
-    <Reference Include="LethalConfig">
-      <HintPath>..\..\VS Projects\Moai\dlls\LethalConfig.dll</HintPath>
-    </Reference>
-    <Reference Include="LethalNetworkAPI">
-      <HintPath>dlls\LethalNetworkAPI.dll</HintPath>
-    </Reference>
-    <Reference Include="MMHOOK_AmazingAssets.TerrainToMesh">
-      <HintPath>..\..\..\AppData\Roaming\r2modmanPlus-local\LethalCompany\profiles\Default\BepInEx\plugins\MMHOOK\MMHOOK_AmazingAssets.TerrainToMesh.dll</HintPath>
-    </Reference>
-    <Reference Include="MMHOOK_Assembly-CSharp">
-      <HintPath>..\..\..\AppData\Roaming\r2modmanPlus-local\LethalCompany\profiles\Default\BepInEx\plugins\MMHOOK\MMHOOK_Assembly-CSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="MMHOOK_ClientNetworkTransform">
-      <HintPath>..\..\..\AppData\Roaming\r2modmanPlus-local\LethalCompany\profiles\Default\BepInEx\plugins\MMHOOK\MMHOOK_ClientNetworkTransform.dll</HintPath>
-    </Reference>
-    <Reference Include="MMHOOK_DissonanceVoip">
-      <HintPath>..\..\..\AppData\Roaming\r2modmanPlus-local\LethalCompany\profiles\Default\BepInEx\plugins\MMHOOK\MMHOOK_DissonanceVoip.dll</HintPath>
-    </Reference>
-    <Reference Include="MMHOOK_Facepunch Transport for Netcode for GameObjects">
-      <HintPath>..\..\..\AppData\Roaming\r2modmanPlus-local\LethalCompany\profiles\Default\BepInEx\plugins\MMHOOK\MMHOOK_Facepunch Transport for Netcode for GameObjects.dll</HintPath>
-    </Reference>
-    <Reference Include="MMHOOK_Facepunch.Steamworks.Win64">
-      <HintPath>..\..\..\AppData\Roaming\r2modmanPlus-local\LethalCompany\profiles\Default\BepInEx\plugins\MMHOOK\MMHOOK_Facepunch.Steamworks.Win64.dll</HintPath>
-    </Reference>
-    <Reference Include="Unity.RenderPipelines.HighDefinition.Config.Runtime">
-      <HintPath>dlls\HighDef\Unity.RenderPipelines.HighDefinition.Config.Runtime.dll</HintPath>
-    </Reference>
-    <Reference Include="Unity.RenderPipelines.HighDefinition.Runtime">
-      <HintPath>dlls\HighDef\Unity.RenderPipelines.HighDefinition.Runtime.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine"><HintPath>../dlls/UnityEngine.CoreModule.dll</HintPath></Reference>
-    <Reference Include="Assembly-CSharp"><HintPath>../dlls/Assembly-CSharp.dll</HintPath></Reference>
-    <Reference Include="Unity.Netcode.Runtime"><HintPath>../dlls/Unity.Netcode.Runtime.dll</HintPath></Reference>
-	  <Reference Include="LethalLib"><HintPath>../dlls/LethalLib.dll</HintPath></Reference>
-  </ItemGroup>
-  <ItemGroup>
     <Compile Update="src\examplene.cs">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Compile>
@@ -91,7 +55,63 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="dlls\HighDef\" />
+    <Reference Include="Assembly-CSharp">
+      <HintPath>..\Assembly_References_For_V73\Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="LethalConfig">
+      <HintPath>..\Assembly_References_For_V73\LethalConfig.dll</HintPath>
+    </Reference>
+    <Reference Include="LethalLib">
+      <HintPath>..\Assembly_References_For_V73\LethalLib.dll</HintPath>
+    </Reference>
+    <Reference Include="MMHOOK_AmazingAssets.TerrainToMesh">
+      <HintPath>..\Assembly_References_For_V73\MMHOOK_AmazingAssets.TerrainToMesh.dll</HintPath>
+    </Reference>
+    <Reference Include="MMHOOK_Assembly-CSharp">
+      <HintPath>..\Assembly_References_For_V73\MMHOOK_Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="MMHOOK_ClientNetworkTransform">
+      <HintPath>..\Assembly_References_For_V73\MMHOOK_ClientNetworkTransform.dll</HintPath>
+    </Reference>
+    <Reference Include="MMHOOK_DissonanceVoip">
+      <HintPath>..\Assembly_References_For_V73\MMHOOK_DissonanceVoip.dll</HintPath>
+    </Reference>
+    <Reference Include="MMHOOK_Facepunch Transport for Netcode for GameObjects">
+      <HintPath>..\Assembly_References_For_V73\MMHOOK_Facepunch Transport for Netcode for GameObjects.dll</HintPath>
+    </Reference>
+    <Reference Include="MMHOOK_Facepunch.Steamworks.Win64">
+      <HintPath>..\Assembly_References_For_V73\MMHOOK_Facepunch.Steamworks.Win64.dll</HintPath>
+    </Reference>
+    <Reference Include="SolidLib">
+      <HintPath>..\Assembly_References_For_V73\SoulDevOnly\SolidLib.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.Burst">
+      <HintPath>..\Assembly_References_For_V73\Unity.Burst.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.Collections">
+      <HintPath>..\Assembly_References_For_V73\Unity.Collections.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.Collections.LowLevel.ILSupport">
+      <HintPath>..\Assembly_References_For_V73\Unity.Collections.LowLevel.ILSupport.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.Netcode.Runtime">
+      <HintPath>..\Assembly_References_For_V73\Unity.Netcode.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.Core.Runtime">
+      <HintPath>..\Assembly_References_For_V73\SoulDevOnly\Unity.RenderPipelines.Core.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.HighDefinition.Config.Runtime">
+      <HintPath>..\Assembly_References_For_V73\SoulDevOnly\Unity.RenderPipelines.HighDefinition.Config.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.HighDefinition.Runtime">
+      <HintPath>..\Assembly_References_For_V73\SoulDevOnly\Unity.RenderPipelines.HighDefinition.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>..\Assembly_References_For_V73\UnityEngine.UI.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="dlls\" />
   </ItemGroup>
 
   <!-- Allows us to use Rpc methods. See https://github.com/EvaisaDev/UnityNetcodePatcher -->
@@ -103,9 +123,9 @@
     <NetcodePatch Include="$(TargetPath)" />
   </ItemGroup>
   -->
-  <Target Name="NetcodePatch" AfterTargets="PostBuildEvent">
-    <Exec Command="netcode-patch &quot;$(TargetPath)&quot; @(ReferencePathWithRefAssemblies->'&quot;%(Identity)&quot;', ' ')" />
-  </Target>
+<Target Name="NetcodePatch" AfterTargets="PostBuildEvent">
+	<Exec Command="netcode-patch -uv 2022.3.62 -nv 1.12.0 -tv 1.0.0 &quot;$(TargetPath)&quot; @(ReferencePathWithRefAssemblies->'&quot;%(Identity)&quot;', ' ')" />
+</Target>
 
   <!-- Build our Thunderstore package when making a release build. This does not publish our package. -->
   <!-- For more information about tcli, see https://github.com/thunderstore-io/thunderstore-cli/wiki -->
