@@ -110,9 +110,6 @@
       <HintPath>..\Assembly_References_For_V73\UnityEngine.UI.dll</HintPath>
     </Reference>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="dlls\" />
-  </ItemGroup>
 
   <!-- Allows us to use Rpc methods. See https://github.com/EvaisaDev/UnityNetcodePatcher -->
   <!-- This MSBuild option does not work in Visual Studio, using cli option for now
