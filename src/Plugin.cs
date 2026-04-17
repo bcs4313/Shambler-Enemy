@@ -310,6 +310,8 @@ namespace Shambler
         public static ConfigEntry<int> maxCount;
         public static ConfigEntry<int> health;
         public static ConfigEntry<bool> canEnterIndoors;
+        public static ConfigEntry<bool> disableColliderOnDeath;
+
         public void bindVars()
         {
             soulRarity = Config.Bind("Spawning", "Enemy Spawnrate Multiplier", 1f, "Changes the spawnrate of the Shambler across ALL planets. Decimals are accepted, 2.0 = approximately double the spawnrate. 0.5 is half the spawnrate.");
@@ -325,6 +327,7 @@ namespace Shambler
             LOSWidth = Config.Bind("Advanced", "Line Of Sight Width", 100f, "Line of sight width for the enemy (by degrees).");
 
             canEnterIndoors = Config.Bind("Modifiers", "Can enter the factory", true, "If shamblers can enter the factory at their own whim. Entry is chance based. The closer a shambler is to an entrance the more likely it will decide to enter.");
+            disableColliderOnDeath = Config.Bind("Advanced", "Enemy Corpse Collision", false, "If a shambler's corpse should have its own collision box. You may want to keep this disabled if you have problems with the corpse getting in the way too often.");
 
             var spawnRateEntry = new FloatInputFieldConfigItem(soulRarity, new FloatInputFieldOptions
             {
@@ -332,31 +335,6 @@ namespace Shambler
                 Min = 0.01f,
                 Max = 100f,
             });
-
-            /*
-            var sizeSlider = new FloatSliderConfigItem(moaiGlobalSize, new FloatSliderOptions
-            {
-                RequiresRestart = false,
-                Min = 0.05f,
-                Max = 5f
-            });
-            */
-
-            /*
-            var sizeVarSlider = new FloatSliderConfigItem(moaiGlobalSizeVar, new FloatSliderOptions
-            {
-                RequiresRestart = false,
-                Min = 0f,
-                Max = 1f
-            });
-
-            var maxSizeEntry = new FloatInputFieldConfigItem(moaiSizeCap, new FloatInputFieldOptions
-            {
-                RequiresRestart = false,
-                Min = 0.01f,
-                Max = 100f,
-            });
-            */
 
 
             var volumeSlider = new FloatSliderConfigItem(moaiGlobalMusicVol, new FloatSliderOptions
@@ -372,13 +350,6 @@ namespace Shambler
                 Min = 0.0f,
                 Max = 5f,
             });
-
-            /*
-            var daytimeSpawnEntry = new BoolCheckBoxConfigItem(daytimeSpawn, new BoolCheckBoxOptions
-            {
-                RequiresRestart = true,
-            });
-            */
 
             var LOSSlider = new FloatSliderConfigItem(LOSWidth, new FloatSliderOptions
             {
@@ -408,6 +379,10 @@ namespace Shambler
             {
                 RequiresRestart = false,
             });
+            var disableColliderOnDeathEntry = new BoolCheckBoxConfigItem(disableColliderOnDeath, new BoolCheckBoxOptions
+            {
+                RequiresRestart = false,
+            });
 
             LethalConfigManager.AddConfigItem(spawnRateEntry);
             LethalConfigManager.AddConfigItem(distEntry);
@@ -422,6 +397,7 @@ namespace Shambler
             LethalConfigManager.AddConfigItem(healthEntry);
             //LethalConfigManager.AddConfigItem(pulseEntry);
             LethalConfigManager.AddConfigItem(indoorsEntry);
+            LethalConfigManager.AddConfigItem(disableColliderOnDeathEntry);
             //LethalConfigManager.AddConfigItem(thrashSlider);
         }
     }

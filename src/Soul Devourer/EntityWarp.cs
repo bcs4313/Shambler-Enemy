@@ -85,11 +85,6 @@ namespace SoulDev
             }
         }
 
-        public static Transform findExitPoint(EntranceTeleport referenceDoor)
-        {
-            return referenceDoor.exitPoint;
-        }
-
         public static void SendEnemyOutside(EnemyAI __instance, bool SpawnOnDoor = true)
         {
             __instance.isOutside = true;

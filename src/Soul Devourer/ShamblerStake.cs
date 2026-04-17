@@ -1,17 +1,10 @@
-﻿using DunGen;
-using GameNetcodeStuff;
-using LethalLib.Modules;
+﻿using GameNetcodeStuff;
 using SoulDev;
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
-using Unity.Burst.CompilerServices;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
-using static UnityEngine.Rendering.DebugUI;
-
 namespace Shambler.src.Soul_Devourer
 {
     internal class ShamblerStake : NetworkBehaviour
@@ -20,28 +13,22 @@ namespace Shambler.src.Soul_Devourer
         public ShamblerEnemy owner;
         public PlayerControllerB victim;
         public Transform stabPoint;
-
         private InteractTrigger envTrigger;
-
         public AudioSource failEscapeSource;
         public AudioSource successSource;
-
         public float damageTimer = 20f; // how often the spike deals dmg
         public int dmgAmount = 5; // how much dmg the spike deals each dmg tick
         int freeChance = 50;  // each time someone tries to free themselves, the chance of freedom increases
         int dmgPunishment = 10;  // punishment for failing a free attempt
-        int failBoost = 20;  // boost to win chance on failure 
-
+        int failBoost = 20;  // boost to win chance on failure
         // the shambler will be VERY UNHAPPY if he sees you trying this
         // (hint, he fucking kills you)
         bool IsFreeing = false;
         public static float commonOffset = 1.15f;
-
         public void Start()
         {
             var plylocal = RoundManager.Instance.playersManager.localPlayerController;
             envTrigger = GetComponent<InteractTrigger>();
-
             if (RoundManager.Instance.IsHost)
             {
                 StartSetupClientRpc();
@@ -51,23 +38,21 @@ namespace Shambler.src.Soul_Devourer
                 SetPositionClientRpc(transform.position);
             }
         }
-
         [ClientRpc]
         public void SetPositionClientRpc(Vector3 pos)
         {
             transform.position = pos;
         }
-
         public PlayerControllerB NearestPlayer()
         {
             RoundManager m = RoundManager.Instance;
             float lowestDist = 999999f;
             var players = m.playersManager.allPlayerScripts;
+            if (players == null || players.Length == 0) return null;
             PlayerControllerB nearestPlayer = players[0];
             foreach (var ply in players)
             {
-
-                if(Vector3.Distance(transform.position, ply.transform.position) < lowestDist)
+                if (Vector3.Distance(transform.position, ply.transform.position) < lowestDist)
                 {
                     nearestPlayer = ply;
                     lowestDist = Vector3.Distance(transform.position, ply.transform.position);
@@ -75,15 +60,12 @@ namespace Shambler.src.Soul_Devourer
             }
             return nearestPlayer;
         }
-
         [ClientRpc]
         public void StartSetupClientRpc()
         {
-            if(victim == null) { victim = NearestPlayer(); }
-
+            if (victim == null) { victim = NearestPlayer(); }
             var plylocal = RoundManager.Instance.playersManager.localPlayerController;
             envTrigger = GetComponent<InteractTrigger>();
-
             if (victim != null && victim.NetworkObject.NetworkObjectId == plylocal.NetworkObject.NetworkObjectId)
             {
                 envTrigger.hoverTip = "Attempt to Escape (" + freeChance + " % chance) Don't let the shambler notice!";
@@ -93,29 +75,23 @@ namespace Shambler.src.Soul_Devourer
                 envTrigger.hoverTip = "Free Player (100 % chance) Don't let the shambler notice!";
             }
         }
-
         /// <summary>
         /// Moves the GameObject so its visual center (Renderer bounds center) is placed at the target position.
         /// </summary>
         public static void MoveByCenter(GameObject obj, Vector3 targetPosition)
         {
             if (obj == null) return;
-
             Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
             if (renderers.Length == 0) return;
-
             // Calculate combined bounds center
             Bounds combinedBounds = renderers[0].bounds;
             foreach (Renderer r in renderers)
                 combinedBounds.Encapsulate(r.bounds);
-
             // Calculate offset between pivot and center
             Vector3 offset = obj.transform.position - combinedBounds.center;
-
             // Move so the center aligns with the target position
             obj.transform.position = targetPosition + offset;
         }
-
         [ClientRpc]
         public void SetVictimClientRpc(ulong playerid)
         {
@@ -127,7 +103,6 @@ namespace Shambler.src.Soul_Devourer
                 if (ply.NetworkObject.NetworkObjectId == playerid)
                 {
                     victim = ply;
-
                     if (victim.NetworkObject.NetworkObjectId == plylocal.NetworkObject.NetworkObjectId)
                     {
                         envTrigger.hoverTip = "Attempt to Escape (" + freeChance + " % chance) Don't let the shambler notice!";
@@ -139,32 +114,30 @@ namespace Shambler.src.Soul_Devourer
                 }
             }
         }
-
         float checkCooldown = 0.25f;
         public void Update()
         {
             checkCooldown -= Time.deltaTime;
-
             if (victim)
             {
                 victim.fallValue = 0;
                 victim.fallValueUncapped = 0;
             }
-
             // owner checks for rage mode while a player is trying to free themselves
-            if(RoundManager.Instance.IsHost && checkCooldown <= 0 && victim == null && IsFreeing)
+            if (RoundManager.Instance.IsHost && checkCooldown <= 0 && victim == null && IsFreeing)
             {
                 checkCooldown = 0;
-                owner.PlayerQualifies(victim);
+                if (owner != null)
+                {
+                    owner.PlayerQualifies(victim);
+                }
             }
-
             // ensure no fall damage bug bs
-            if(victim) 
-            { 
+            if (victim)
+            {
                 victim.fallValue = 0;
                 victim.fallValueUncapped = 0;
             }
-
             if (victim)
             {
                 victim.transform.position = stabPoint.position;
@@ -173,16 +146,14 @@ namespace Shambler.src.Soul_Devourer
                     //SetColliderClientRpc(victim.NetworkObject.NetworkObjectId, false);
                 }
             }
-
             if (RoundManager.Instance.IsHost)
             {
                 // just to make things more forgiving
-                if (victim != null && !envTrigger.isBeingHeldByPlayer && owner.EscapingEmployees.Contains(victim.NetworkObject.NetworkObjectId))
+                if (victim != null && !envTrigger.isBeingHeldByPlayer && owner != null && owner.EscapingEmployees.Contains(victim.NetworkObject.NetworkObjectId))
                 {
                     IsFreeing = false;
                     owner.StakeUnNotify(victim);
                 }
-
                 // disable self on recapture (avoiding a duplicate stake planting bug)
                 if (victim != null)
                 {
@@ -209,37 +180,37 @@ namespace Shambler.src.Soul_Devourer
                 }
             }
         }
-
         [ClientRpc]
         public void DetachClientRpc()
         {
-            if(victim != null)
+            if (victim != null)
             {
-                if(ShamblerEnemy.stuckPlayerIds != null)
+                if (ShamblerEnemy.stuckPlayerIds != null)
                 {
                     ShamblerEnemy.stuckPlayerIds.Remove(victim.NetworkObject.NetworkObjectId);
                 }
-
                 //victim.playerCollider.enabled = true;
             }
             victim = null;
         }
-
         // client and server call this
         public void AttemptFree(PlayerControllerB caller)
         {
             Debug.Log("stake attempt free:");
-            if (!RoundManager.Instance.IsHost) 
-            { 
+            if (!RoundManager.Instance.IsHost)
+            {
                 AttemptFreeServerRpc(caller.NetworkObject.NetworkObjectId);
                 return;
             }
+            // null guard: if victim is gone there's nothing to free
+            if (victim == null) return;
             if (victim.isPlayerDead) { DetachClientRpc(); }
-
-            owner.StakeNotify(victim);
-
+            if (owner != null)
+            {
+                owner.StakeNotify(victim);
+            }
             IsFreeing = false;
-            if (UnityEngine.Random.RandomRangeInt(0, 100) < freeChance ||  (caller.NetworkObject.NetworkObjectId != victim.NetworkObject.NetworkObjectId))
+            if (UnityEngine.Random.RandomRangeInt(0, 100) < freeChance || (caller.NetworkObject.NetworkObjectId != victim.NetworkObject.NetworkObjectId))
             {
                 if (victim)
                 {
@@ -267,23 +238,24 @@ namespace Shambler.src.Soul_Devourer
                     DmgPlayerClientRpc(victim.NetworkObject.NetworkObjectId, dmgPunishment);
                     PlayFailEscapeClientRpc();
                     updateStatsClientRpc(5, failBoost);
-                    owner.StakeUnNotify(victim);
+                    if (owner != null)
+                    {
+                        owner.StakeUnNotify(victim);
+                    }
                 }
             }
         }
-
         // prevents player from falling off the map when freeing themselves
         public void SnapToNavmesh(PlayerControllerB ply)
         {
             NavMeshHit hit;
             bool sample = NavMesh.SamplePosition(ply.transform.position, out hit, 10f, NavMesh.AllAreas);
-            if(sample)
+            if (sample)
             {
                 NavSnapClientRpc(ply.NetworkObject.NetworkObjectId, hit.position);
                 Debug.Log("Snapped to position: " + hit.position);
             }
         }
-
         [ClientRpc]
         public void NavSnapClientRpc(ulong playerid, Vector3 pos)
         {
@@ -298,7 +270,6 @@ namespace Shambler.src.Soul_Devourer
                 }
             }
         }
-
         [ClientRpc]
         public void updateStatsClientRpc(int dmgPunishmentChange, int freeChanceChange)
         {
@@ -314,7 +285,6 @@ namespace Shambler.src.Soul_Devourer
                 envTrigger.hoverTip = "Free Player (100 % chance) Don't let the shambler notice!";
             }
         }
-
         [ClientRpc]
         public void DmgPlayerClientRpc(ulong playerid, int amount)
         {
@@ -324,23 +294,20 @@ namespace Shambler.src.Soul_Devourer
             {
                 if (ply.NetworkObject.NetworkObjectId == playerid)
                 {
-                    ply.DamagePlayer(30);
+                    ply.DamagePlayer(20, true, true, CauseOfDeath.Stabbing, 0, false, default(Vector3));
                 }
             }
         }
-
         [ClientRpc]
         public void SetHoverTipClientRpc(string tip)
         {
             GetComponent<InteractTrigger>().hoverTip = tip;
         }
-
         [ClientRpc]
         public void DisableInteractClientRpc()
         {
             GetComponent<InteractTrigger>().enabled = false;
         }
-
         [ClientRpc]
         public void ResetFallValuesClientRpc(ulong playerid)
         {
@@ -356,21 +323,19 @@ namespace Shambler.src.Soul_Devourer
                 }
             }
         }
-
         [ClientRpc]
         public void SetColliderClientRpc(ulong playerid, bool value)
         {
             RoundManager m = RoundManager.Instance;
             var players = m.playersManager.allPlayerScripts;
-            foreach(var ply in players)
+            foreach (var ply in players)
             {
-                if(ply.NetworkObject.NetworkObjectId == playerid)
+                if (ply.NetworkObject.NetworkObjectId == playerid)
                 {
                     //ply.playerCollider.enabled = value;
                 }
             }
         }
-
         [ServerRpc(RequireOwnership = false)]
         public void AttemptFreeServerRpc(ulong playerid)
         {
@@ -385,45 +350,46 @@ namespace Shambler.src.Soul_Devourer
                 }
             }
         }
-
-
         [ClientRpc]
         public void PlaySuccessClientRpc()
         {
             successSource.Play();
         }
-
         [ClientRpc]
         public void PlayFailEscapeClientRpc()
         {
             failEscapeSource.Play();
         }
-
-
         public async void DelayedUnNotifLong(PlayerControllerB ply)
         {
             await Task.Delay(9000);
-            owner.StakeUnNotify(ply);
+            if (owner != null)
+            {
+                owner.StakeUnNotify(ply);
+            }
         }
-
         public void StartInteract()
         {
             if (RoundManager.Instance.IsHost)
             {
                 IsFreeing = true;
-                owner.StakeNotify(victim);
+                if (owner != null)
+                {
+                    owner.StakeNotify(victim);
+                }
             }
         }
-
         public void StopInteract()
         {
             if (RoundManager.Instance.IsHost)
             {
                 IsFreeing = false;
-                owner.StakeUnNotify(victim);
+                if (owner != null)
+                {
+                    owner.StakeUnNotify(victim);
+                }
             }
         }
-
         public void OnDestroy()
         {
             if (victim)

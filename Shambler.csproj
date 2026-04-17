@@ -58,6 +58,9 @@
     <Reference Include="Assembly-CSharp">
       <HintPath>..\Assembly_References_For_V73\Assembly-CSharp.dll</HintPath>
     </Reference>
+    <Reference Include="DunGen">
+      <HintPath>..\Assembly_References_For_V73\DunGen.dll</HintPath>
+    </Reference>
     <Reference Include="LethalConfig">
       <HintPath>..\Assembly_References_For_V73\LethalConfig.dll</HintPath>
     </Reference>
