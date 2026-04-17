@@ -140,7 +140,6 @@ namespace SoulDev
         }
         public void SetAudioVolumes()
         {
-            /*
             creatureAnger.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
             creatureDeath.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
             creatureLaugh.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
@@ -151,11 +150,10 @@ namespace SoulDev
             creatureStab.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
             creatureTakeDmg.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
             creatureVoice.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
-            foreach(var aud in creatureSteps)
+            foreach (var aud in creatureSteps)
             {
                 aud.volume = creatureAnger.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
             }
-            */
         }
         public override void Start()
         {
