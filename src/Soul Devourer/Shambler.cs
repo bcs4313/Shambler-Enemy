@@ -159,9 +159,6 @@ namespace SoulDev
         {
             base.Start();
 
-            // leg independent layer
-            animator.SetLayerWeight(1, 0f);
-
             if (RoundManager.Instance.IsHost && FindObjectsOfType<ShamblerEnemy>().Length > Plugin.maxCount.Value)
             {
                 Destroy(this.gameObject);
@@ -208,6 +205,10 @@ namespace SoulDev
             {
                 facePosition(targetPlayer.transform.position);
             }
+
+
+            // leg independent layer
+            animator.SetLayerWeight(1, 0f);
         }
         private static bool IsPlayerStaked(PlayerControllerB p)
         {
@@ -220,6 +221,8 @@ namespace SoulDev
         public override void Update()
         {
             base.Update();
+
+            this.animator.speed = 1; // no global control of animations allowed
             sizeCheckCooldown -= Time.deltaTime;
             if (sizeCheckCooldown < 0)
             {
@@ -238,7 +241,6 @@ namespace SoulDev
             // death check for traps
             if (!this.isEnemyDead && enemyHP <= 0 && !markDead)
             {
-                this.animator.speed = 1;
                 base.KillEnemyOnOwnerClient(false);
                 this.stopAllSound();
                 if (!animator.GetCurrentAnimatorStateInfo(0).IsName("Death") && !animator.GetCurrentAnimatorStateInfo(0).IsName("Exit"))
@@ -485,7 +487,6 @@ namespace SoulDev
             //Think("sneakystab");
             agent.speed = 0f;
             stabTimeout -= 0.2f;
-            setAnimationSpeedClientRpc(1);
             agent.updateRotation = false;
             if (getNearestPlayer())
             {
@@ -628,7 +629,6 @@ namespace SoulDev
         {
             //Think("basestabbing");
             agent.speed = 0f;
-            setAnimationSpeedClientRpc(1);
             if (isEnemyDead)
             {
                 agent.updateRotation = true;
@@ -699,7 +699,6 @@ namespace SoulDev
         {
             agent.updateRotation = false;
             agent.speed = 0f;
-            setAnimationSpeedClientRpc(1);
             targetPlayer = getNearestPlayer();
             leapTimer -= 0.2f;
             if (targetPlayer == null)
@@ -844,7 +843,6 @@ namespace SoulDev
         public void baseCrouching()
         {
             agent.speed = 0f;
-            setAnimationSpeedClientRpc(1);
             DoAnimationClientRpc(2);
             animPlayClientRpc("Crouching");
             Debug.Log("Crouching... timer: " + crouchTimer);
@@ -1296,12 +1294,12 @@ namespace SoulDev
             if (agent.velocity.magnitude > (agent.speed / 4))
             {
                 if (RoundManager.Instance.IsServer) { DoAnimationClientRpc(1); }
-                setAnimationSpeedClientRpc(agent.velocity.magnitude / walkAnimationCoefficient);
+                setParamClientRpc("WalkSpeed", agent.velocity.magnitude / walkAnimationCoefficient);
             }
             else if (agent.velocity.magnitude <= (agent.speed / 8))
             {
                 if (RoundManager.Instance.IsServer) { DoAnimationClientRpc(0); }
-                setAnimationSpeedClientRpc(1);
+                setParamClientRpc("WalkSpeed", 1);
             }
             // pick valid target
             var ply = (targetPlayer != null && PlayerIsTargetable(targetPlayer)) ? targetPlayer : getNearestPlayer();
@@ -1455,12 +1453,12 @@ namespace SoulDev
             if (agent.velocity.magnitude > (agent.speed / 4))
             {
                 if (RoundManager.Instance.IsServer) { DoAnimationClientRpc(1); }
-                setAnimationSpeedClientRpc(agent.velocity.magnitude / walkAnimationCoefficient);
+                setParamClientRpc("WalkSpeed", agent.velocity.magnitude / walkAnimationCoefficient);
             }
             else if (agent.velocity.magnitude <= (agent.speed / 8))
             {
                 if (RoundManager.Instance.IsServer) { DoAnimationClientRpc(0); }
-                setAnimationSpeedClientRpc(1);
+                setParamClientRpc("WalkSpeed", 1);
             }
             // sound switch
             if (!creatureVoice.isPlaying)
@@ -1522,12 +1520,12 @@ namespace SoulDev
             if (agent.velocity.magnitude > (agent.speed / 4))
             {
                 if (RoundManager.Instance.IsServer) { DoAnimationClientRpc(1); }
-                setAnimationSpeedClientRpc(agent.velocity.magnitude / walkAnimationCoefficient);
+                setParamClientRpc("WalkSpeed", agent.velocity.magnitude / walkAnimationCoefficient);
             }
             else if (agent.velocity.magnitude <= (agent.speed / 8))
             {
                 if (RoundManager.Instance.IsServer) { DoAnimationClientRpc(0); }
-                setAnimationSpeedClientRpc(1);
+                setParamClientRpc("WalkSpeed", 1);
             }
             SetDestinationToPosition(nestSpot);
             if (Vector3.Distance(transform.position, nestSpot) < 15f)
@@ -1554,7 +1552,6 @@ namespace SoulDev
         {
             //Think("baseplanting");
             agent.speed = 0f;
-            setAnimationSpeedClientRpc(1);
             if (isEnemyDead)
             {
                 agent.updateRotation = true;
@@ -1670,12 +1667,12 @@ namespace SoulDev
             if (agent.velocity.magnitude > (agent.speed / 4))
             {
                 if (RoundManager.Instance.IsServer) { DoAnimationClientRpc(1); }
-                setAnimationSpeedClientRpc(agent.velocity.magnitude / walkAnimationCoefficient);
+                setParamClientRpc("WalkSpeed", agent.velocity.magnitude / walkAnimationCoefficient);
             }
             else if (agent.velocity.magnitude <= (agent.speed / 8))
             {
                 if (RoundManager.Instance.IsServer) { DoAnimationClientRpc(0); }
-                setAnimationSpeedClientRpc(1);
+                setParamClientRpc("WalkSpeed", 1);
             }
             SetDestinationToPosition(nearestEntranceNavPosition);
             if (this.isOutside != nearestEntrance.isEntranceToBuilding || this.agent.pathStatus == NavMeshPathStatus.PathPartial)
@@ -1769,8 +1766,7 @@ namespace SoulDev
         }
 
 
-        // The ship has a radius that is a designated safe zone. The shambler cannot remain in this zone period.
-        // (he is scared of it, also he is just really unfun near the ship).
+        /*
         public bool InsideSafeZone()
         {
             // get ship
@@ -1783,7 +1779,10 @@ namespace SoulDev
             }
             return false;
         }
+        */
 
+        // The ship has a radius that is a designated safe zone. The shambler cannot remain in this zone period.
+        // (he is scared of it, also he is just really unfun near the ship).
         public bool PlayerInsideSafeZone(PlayerControllerB ply)
         {
             // get ship
@@ -1802,8 +1801,8 @@ namespace SoulDev
         public bool PlayerQualifies(PlayerControllerB ply)
         {
             if (ply == null || ply.NetworkObject == null) return false;
-            if (PlayerInsideSafeZone(ply)) { return false; }  // can't target players a certain distance from the shipw
-            if(InsideSafeZone()) { return false;  }  // the shambler shouldn't be in this radius either
+            if (PlayerInsideSafeZone(ply)) { return false; }  // can't target players a certain distance from the ship
+            //if(InsideSafeZone()) { return false;  }  // the shambler shouldn't be in this radius either
 
             // TODO: define a radius around the ship, of which the shambler can not go past
             // If player is escaping AND inside our forward cone (or very close) AND we have LOS, enrage
@@ -2143,8 +2142,13 @@ namespace SoulDev
             StartCoroutine(DoAssertDominance());
         }
 
+        // ensure the stateName indicates the intent
         [ClientRpc]
-        public void setAnimationSpeedClientRpc(float speed) => this.animator.speed = speed;
+        public void setParamClientRpc(String param, float speed)
+        {
+            animator.SetFloat(param, speed);
+        }
+
         [ClientRpc]
         // note that this is only for rotation animations (cause its moai)
         // these are synced through a network transform
