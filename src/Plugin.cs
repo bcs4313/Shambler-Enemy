@@ -295,27 +295,24 @@ namespace Shambler
 
         // SETTINGS SECTION
         // consider these multipliers for existing values
-        //public static ConfigEntry<float> moaiGlobalSize;
-        //public static ConfigEntry<float> moaiGlobalSizeVar;
-        //public static ConfigEntry<float> moaiSizeCap;
         public static ConfigEntry<float> moaiGlobalMusicVol;
         public static ConfigEntry<float> moaiGlobalSpeed;
         public static ConfigEntry<float> soulRarity;
         public static ConfigEntry<String> devourerSpawnDist;
         public static ConfigEntry<bool> spawnsOutside;
-        //public static ConfigEntry<bool> daytimeSpawn;
         public static ConfigEntry<float> LOSWidth;
-        //public static ConfigEntry<float> thrashCooldown;
-        //public static ConfigEntry<bool> pulseFX;
         public static ConfigEntry<int> maxCount;
         public static ConfigEntry<int> health;
         public static ConfigEntry<bool> canEnterIndoors;
         public static ConfigEntry<bool> disableColliderOnDeath;
 
+        // behavior related
+        public static ConfigEntry<float> shipSafeZoneRadius;
+
         public void bindVars()
         {
             soulRarity = Config.Bind("Spawning", "Enemy Spawnrate Multiplier", 1f, "Changes the spawnrate of the Shambler across ALL planets. Decimals are accepted, 2.0 = approximately double the spawnrate. 0.5 is half the spawnrate.");
-            devourerSpawnDist = Config.Bind("Spawning", "Enemy Spawn Weights", "ExperimentationLevel:8,AssuranceLevel:20,OffenseLevel:20,MarchLevel:33,AdamanceLevel:33,DineLevel:14,RendLevel:14,TitanLevel:14,ArtificeLevel:33,Modded:33", "The spawn weight of the Shambler (multiplied by enemy spawnrate value) and the moons that the enemy can spawn on, in the form of a comma separated list of selectable level names and a weight value (e.g. \"ExperimentationLevel:300,DineLevel:20,RendLevel:10,Modded:10\")\r\nThe following strings: \"All\", \"Vanilla\", \"Modded\" are also valid.");
+            devourerSpawnDist = Config.Bind("Spawning", "Enemy Spawn Weights", "ExperimentationLevel:8,AssuranceLevel:24,OffenseLevel:24,MarchLevel:40,AdamanceLevel:40,DineLevel:17,RendLevel:17,TitanLevel:14,ArtificeLevel:20,Modded:24", "The spawn weight of the Shambler (multiplied by enemy spawnrate value) and the moons that the enemy can spawn on, in the form of a comma separated list of selectable level names and a weight value (e.g. \"ExperimentationLevel:300,DineLevel:20,RendLevel:10,Modded:10\")\r\nThe following strings: \"All\", \"Vanilla\", \"Modded\" are also valid.");
             maxCount = Config.Bind("Spawning", "Enemy Max Count", 3, "The maximum amount of Shamblers that can spawn in one day (hard cap).");
             moaiGlobalMusicVol = Config.Bind("Modifiers", "Enemy Sound Volume", 0.6f, "Changes the volume of all Shambler sounds. May make them more sneaky as well.");
             //moaiGlobalSizeVar = Config.Bind("Modifiers", "Size Variant Chance", 0.2f, "The chance of a soul devourer to spawn in a randomly scaled size. Affects their pitch too.");
@@ -328,6 +325,8 @@ namespace Shambler
 
             canEnterIndoors = Config.Bind("Modifiers", "Can enter the factory", true, "If shamblers can enter the factory at their own whim. Entry is chance based. The closer a shambler is to an entrance the more likely it will decide to enter.");
             disableColliderOnDeath = Config.Bind("Advanced", "Enemy Corpse Collision", false, "If a shambler's corpse should have its own collision box. You may want to keep this disabled if you have problems with the corpse getting in the way too often.");
+
+            shipSafeZoneRadius = Config.Bind("Behavior", "Ship safe zone radius", 30f, "The radius of the protective sphere around the ship that the shambler can't pursue or attack in. Set to zero if you want some chaos, otherwise use as you please. The default value should protect you for about 8-ish steps from the edges of the ship.");
 
             var spawnRateEntry = new FloatInputFieldConfigItem(soulRarity, new FloatInputFieldOptions
             {
@@ -384,6 +383,13 @@ namespace Shambler
                 RequiresRestart = false,
             });
 
+            var shipSafeZoneRadiusEntry = new FloatInputFieldConfigItem(shipSafeZoneRadius, new FloatInputFieldOptions
+            {
+                RequiresRestart = true,
+                Min = 0.01f,
+                Max = 100f,
+            });
+
             LethalConfigManager.AddConfigItem(spawnRateEntry);
             LethalConfigManager.AddConfigItem(distEntry);
             LethalConfigManager.AddConfigItem(volumeSlider);
@@ -398,6 +404,7 @@ namespace Shambler
             //LethalConfigManager.AddConfigItem(pulseEntry);
             LethalConfigManager.AddConfigItem(indoorsEntry);
             LethalConfigManager.AddConfigItem(disableColliderOnDeathEntry);
+            LethalConfigManager.AddConfigItem(shipSafeZoneRadiusEntry);
             //LethalConfigManager.AddConfigItem(thrashSlider);
         }
     }

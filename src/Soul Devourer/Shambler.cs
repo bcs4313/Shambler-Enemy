@@ -158,6 +158,10 @@ namespace SoulDev
         public override void Start()
         {
             base.Start();
+
+            // leg independent layer
+            animator.SetLayerWeight(1, 0f);
+
             if (RoundManager.Instance.IsHost && FindObjectsOfType<ShamblerEnemy>().Length > Plugin.maxCount.Value)
             {
                 Destroy(this.gameObject);
@@ -355,6 +359,7 @@ namespace SoulDev
                 {
                     angerSoundTimer = 5;
                     moaiSoundPlayClientRpc("creatureAnger");
+                    DoAssertDominanceClientRpc();
                 }
             }
             if (angerSoundTimer >= 0)
@@ -1764,7 +1769,6 @@ namespace SoulDev
         }
 
 
-        public static float safeZoneRadius = 30f;
         // The ship has a radius that is a designated safe zone. The shambler cannot remain in this zone period.
         // (he is scared of it, also he is just really unfun near the ship).
         public bool InsideSafeZone()
@@ -1773,7 +1777,7 @@ namespace SoulDev
             GameObject ship = GameObject.Find("HangarShip");
 
             // simple spherical radius check on the main object
-            if(ship != null && Vector3.Distance(this.transform.position, ship.transform.position) < safeZoneRadius)
+            if(ship != null && Vector3.Distance(this.transform.position, ship.transform.position) < Plugin.shipSafeZoneRadius.Value)
             {
                 return true;
             }
@@ -1786,7 +1790,7 @@ namespace SoulDev
             GameObject ship = GameObject.Find("HangarShip");
 
             // simple spherical radius check on the main object
-            if (ship != null && Vector3.Distance(ply.transform.position, ship.transform.position) < safeZoneRadius)
+            if (ship != null && Vector3.Distance(ply.transform.position, ship.transform.position) < Plugin.shipSafeZoneRadius.Value)
             {
                 return true;
             }
@@ -2075,6 +2079,70 @@ namespace SoulDev
                     break;
             }
         }
+
+
+        // This animation coroutine is a way to warn players to BACK off, or else the shambler will start attacking
+        // Activate a leg independent layer (layer 1)
+        // this layer causes the shambler to beat its chest angrily
+        // afterwards, release the layer authority
+        bool assertingDominance = false;  // guard for asserting dominance
+        public IEnumerator DoAssertDominance()
+        {
+            try
+            {
+                if (assertingDominance) { yield break; }
+                assertingDominance = true;
+                const int layer = 1;
+                const float easeDuration = 0.2f;
+
+                Think("Doing Dominance Assertion Animation");
+                animator.SetLayerWeight(layer, 0f);
+                animator.Play("ANGRY", layer, 0f);
+
+                // wait one frame so the Animator registers the Play call
+                yield return null;
+
+                float clipLength = animator.GetCurrentAnimatorStateInfo(layer).length;
+
+                // ease in
+                yield return LerpLayerWeight(layer, 1f, easeDuration);
+
+                // hold at full weight for the middle of the clip
+                float holdTime = clipLength - (easeDuration * 2f);
+                if (holdTime > 0f) yield return new WaitForSeconds(holdTime);
+
+                // ease out while the clip is still playing its tail
+                yield return LerpLayerWeight(layer, 0f, easeDuration);
+
+                animator.SetLayerWeight(layer, 0f);
+                Think("Dominance Assertion done");
+            }
+            finally
+            {
+                assertingDominance = false;
+            }
+        }
+
+        IEnumerator LerpLayerWeight(int layer, float target, float duration)
+        {
+            float start = animator.GetLayerWeight(layer);
+            float t = 0f;
+            while (t < duration)
+            {
+                t += Time.deltaTime;
+                animator.SetLayerWeight(layer, Mathf.Lerp(start, target, t / duration));
+                yield return null;
+            }
+            animator.SetLayerWeight(layer, target);
+        }
+
+        // used for hops so clients can truly see where the shambler is during the hop (leaps look very short on client)
+        [ClientRpc]
+        public void DoAssertDominanceClientRpc()
+        {
+            StartCoroutine(DoAssertDominance());
+        }
+
         [ClientRpc]
         public void setAnimationSpeedClientRpc(float speed) => this.animator.speed = speed;
         [ClientRpc]
