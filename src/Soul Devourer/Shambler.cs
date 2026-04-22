@@ -55,11 +55,13 @@ namespace SoulDev
         public AudioSource creatureLeapLand;
         public AudioSource creatureAnger;
         float angerSoundTimer = 0f;
+        float angerSoundTimer2 = 0f;
         public AudioSource creatureLaugh;
         public AudioSource creaturePlant;
         public AudioSource creatureSneakyStab;
         public AudioSource creatureDeath;
         public AudioSource creatureTakeDmg;
+        public AudioSource creatureFrustrated;
         public AudioSource[] creatureSteps;
         // animation vars (new)
         protected float runAnimationCoefficient = 14f;
@@ -364,10 +366,20 @@ namespace SoulDev
                     moaiSoundPlayClientRpc("creatureAnger");
                     DoAssertDominanceClientRpc();
                 }
+                else if(angerSoundTimer2 <= 0 && FitToExpressFrustration())
+                {
+                    angerSoundTimer2 = (float)(7 * enemyRandom.NextDouble() + 5f);
+                    moaiSoundPlayClientRpc("creatureFrustrated");
+                    DoExpressFrustrationClientRpc();
+                }
             }
             if (angerSoundTimer >= 0)
             {
                 angerSoundTimer -= Time.deltaTime;
+            }
+            if (angerSoundTimer2 >= 0)
+            {
+                angerSoundTimer2 -= Time.deltaTime;
             }
             if (targetPlayer != null && targetPlayer.isPlayerDead) { targetPlayer = null; }
 
@@ -1317,7 +1329,7 @@ namespace SoulDev
             bool seenNow = IsVisibleToAnyPlayers(transform.position);
             if (seenNow) lastSeenTime = Time.time;
             // prepare to leap if the player sees us, a warning has been made and is close
-            if (alertLevel >= 70 && !assertingDominance && Vector3.Distance(getNearestPlayer().transform.position, transform.position) < maxLeapDistance / 1.5)
+            if (alertLevel >= 70 && !inLegIndependentCoroutine && Vector3.Distance(getNearestPlayer().transform.position, transform.position) < maxLeapDistance / 1.5)
             {
                 SwitchToBehaviourClientRpc((int)State.Crouching);
                 crouchTimer = (float)(0.5 + (enemyRandom.NextDouble() * 1.5));
@@ -1806,8 +1818,6 @@ namespace SoulDev
             if (PlayerInsideSafeZone(ply)) { return false; }  // can't target players a certain distance from the ship
             //if(InsideSafeZone()) { return false;  }  // the shambler shouldn't be in this radius either
 
-            // TODO: define a radius around the ship, of which the shambler can not go past
-            // If player is escaping AND inside our forward cone (or very close) AND we have LOS, enrage
             if (EscapingEmployees.Contains(ply.NetworkObject.NetworkObjectId))
             {
                 Vector3 enemyEye = headCol ? headCol.position : transform.position + Vector3.up * 1.6f;
@@ -2071,6 +2081,9 @@ namespace SoulDev
                 case "creatureHit":
                     creatureTakeDmg.Play();
                     break;
+                case "creatureFrustrated":
+                    creatureFrustrated.Play();
+                    break;
                 case "step":
                     if (creatureSteps.Length > 0)
                     {
@@ -2084,16 +2097,56 @@ namespace SoulDev
 
         // This animation coroutine is a way to warn players to BACK off, or else the shambler will start attacking
         // Activate a leg independent layer (layer 1)
+        // this layer causes the shambler to smash the ground in frustration
+        // afterwards, release the layer authority
+        public IEnumerator DoExpressFrustration()
+        {
+            try
+            {
+                if (inLegIndependentCoroutine) { yield break; }
+                inLegIndependentCoroutine = true;
+                const int layer = 1;
+                const float easeDuration = 0.2f;
+
+                Think("Doing Express Frustration Animation");
+                animator.SetLayerWeight(layer, 0f);
+                animator.Play("SmashGroundFrustrated", layer, 0f);
+
+                // wait one frame so the Animator registers the Play call
+                yield return null;
+
+                float clipLength = animator.GetCurrentAnimatorStateInfo(layer).length;
+
+                // ease in
+                yield return LerpLayerWeight(layer, 1f, easeDuration);
+
+                // hold at full weight for the middle of the clip
+                float holdTime = clipLength - (easeDuration * 2f);
+                if (holdTime > 0f) yield return new WaitForSeconds(holdTime);
+
+                // ease out while the clip is still playing its tail
+                yield return LerpLayerWeight(layer, 0f, easeDuration);
+
+                animator.SetLayerWeight(layer, 0f);
+                Think("Express Frustration done");
+            }
+            finally
+            {
+                inLegIndependentCoroutine = false;
+            }
+        }
+
+        // This animation coroutine is a way to warn players that the shambler is now aggressive
+        // Activate a leg independent layer (layer 1)
         // this layer causes the shambler to beat its chest angrily
         // afterwards, release the layer authority
-        bool assertingDominance = false;  // guard for asserting dominance
-        bool givenWarning = false;
+        bool inLegIndependentCoroutine = false;  // guard for asserting dominance and other coroutines
         public IEnumerator DoAssertDominance()
         {
             try
             {
-                if (assertingDominance) { yield break; }
-                assertingDominance = true;
+                if (inLegIndependentCoroutine) { yield break; }
+                inLegIndependentCoroutine = true;
                 const int layer = 1;
                 const float easeDuration = 0.2f;
 
@@ -2121,7 +2174,7 @@ namespace SoulDev
             }
             finally
             {
-                assertingDominance = false;
+                inLegIndependentCoroutine = false;
             }
         }
 
@@ -2145,6 +2198,13 @@ namespace SoulDev
             StartCoroutine(DoAssertDominance());
         }
 
+        // used for hops so clients can truly see where the shambler is during the hop (leaps look very short on client)
+        [ClientRpc]
+        public void DoExpressFrustrationClientRpc()
+        {
+            StartCoroutine(DoExpressFrustration());
+        }
+
         public bool FitToAssertDominance()
         {
             if(!targetPlayer) { return false; }
@@ -2157,6 +2217,19 @@ namespace SoulDev
             // only allowed to assert dominance if heading towards a destination
             // that is within leap distance
             if (Vector3.Distance(agent.destination, targetPlayer.transform.position) > maxLeapDistance) { return false; }
+
+            return currentBehaviourStateIndex == (int)State.ClosingDistance;
+        }
+
+        public bool FitToExpressFrustration()
+        {
+            if (!targetPlayer) { return false; }
+
+            // only allowed to express frustration if idle
+            //if(!animator.GetCurrentAnimatorStateInfo(0).IsName("Idle")) { return false; };
+
+            // only allowed to express frustration if NOT within leap distance
+            if (Vector3.Distance(transform.position, targetPlayer.transform.position) < maxLeapDistance) { return false; }
 
             return currentBehaviourStateIndex == (int)State.ClosingDistance;
         }
