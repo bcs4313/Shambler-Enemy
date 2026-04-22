@@ -17,8 +17,7 @@ namespace Shambler.src.Soul_Devourer
         public AudioSource failEscapeSource;
         public AudioSource successSource;
         public float damageTimer = 20f; // how often the spike deals dmg
-        public int dmgAmount = 5; // how much dmg the spike deals each dmg tick
-        int freeChance = 50;  // each time someone tries to free themselves, the chance of freedom increases
+        int freeChance = -1;  // each time someone tries to free themselves, the chance of freedom increases
         int dmgPunishment = 10;  // punishment for failing a free attempt
         int failBoost = 20;  // boost to win chance on failure
         // the shambler will be VERY UNHAPPY if he sees you trying this
@@ -29,6 +28,7 @@ namespace Shambler.src.Soul_Devourer
         {
             var plylocal = RoundManager.Instance.playersManager.localPlayerController;
             envTrigger = GetComponent<InteractTrigger>();
+            freeChance = Plugin.stakeFreeChance.Value;
             if (RoundManager.Instance.IsHost)
             {
                 StartSetupClientRpc();
@@ -210,7 +210,7 @@ namespace Shambler.src.Soul_Devourer
                 owner.StakeNotify(victim);
             }
             IsFreeing = false;
-            if (UnityEngine.Random.RandomRangeInt(0, 100) < freeChance || (caller.NetworkObject.NetworkObjectId != victim.NetworkObject.NetworkObjectId))
+            if (UnityEngine.Random.RandomRangeInt(0, 100) < Plugin.stakeFreeChance.Value || (caller.NetworkObject.NetworkObjectId != victim.NetworkObject.NetworkObjectId))
             {
                 if (victim)
                 {
@@ -294,7 +294,7 @@ namespace Shambler.src.Soul_Devourer
             {
                 if (ply.NetworkObject.NetworkObjectId == playerid)
                 {
-                    ply.DamagePlayer(20, true, true, CauseOfDeath.Stabbing, 0, false, default(Vector3));
+                    ply.DamagePlayer(Plugin.stakeFailDmg.Value, true, true, CauseOfDeath.Stabbing, 0, false, default(Vector3));
                 }
             }
         }

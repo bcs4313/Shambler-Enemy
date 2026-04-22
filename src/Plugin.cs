@@ -308,6 +308,8 @@ namespace Shambler
 
         // behavior related
         public static ConfigEntry<float> shipSafeZoneRadius;
+        public static ConfigEntry<int> stakeFreeChance;
+        public static ConfigEntry<int> stakeFailDmg;
 
         public void bindVars()
         {
@@ -327,6 +329,8 @@ namespace Shambler
             disableColliderOnDeath = Config.Bind("Advanced", "Enemy Corpse Collision", false, "If a shambler's corpse should have its own collision box. You may want to keep this disabled if you have problems with the corpse getting in the way too often.");
 
             shipSafeZoneRadius = Config.Bind("Behavior", "Ship safe zone radius", 30f, "The radius of the protective sphere around the ship that the shambler can't pursue or attack in. Set to zero if you want some chaos, otherwise use as you please. The default value should protect you for about 8-ish steps from the edges of the ship.");
+            stakeFreeChance = Config.Bind("Modifiers", "Stake Free Chance", 100, "Chance of a player to free themselves from a stake the shambler impaled them with. If you want the shambler to be extra punishing, take away some of the percentage chance here. Failures make the player take damage, and friends always have a 100% chance to free others. ");
+            stakeFailDmg = Config.Bind("Modifiers", "Stake Fail Dmg", 20, "Amount of damage a player takes when they fail to free themselves from a stake. Irrelevant unless stake free chance is below 100%.");
 
             var spawnRateEntry = new FloatInputFieldConfigItem(soulRarity, new FloatInputFieldOptions
             {
@@ -389,6 +393,19 @@ namespace Shambler
                 Min = 0.01f,
                 Max = 100f,
             });
+            var stakeFreeChanceEntry = new IntInputFieldConfigItem(stakeFreeChance, new IntInputFieldOptions
+            {
+                RequiresRestart = true,
+                Min = 0,
+                Max = 100,
+            });
+            var stakeFailDmgEntry = new IntInputFieldConfigItem(stakeFailDmg, new IntInputFieldOptions
+            {
+                RequiresRestart = true,
+                Min = 0,
+                Max = 1000,
+            });
+
 
             LethalConfigManager.AddConfigItem(spawnRateEntry);
             LethalConfigManager.AddConfigItem(distEntry);
@@ -405,6 +422,8 @@ namespace Shambler
             LethalConfigManager.AddConfigItem(indoorsEntry);
             LethalConfigManager.AddConfigItem(disableColliderOnDeathEntry);
             LethalConfigManager.AddConfigItem(shipSafeZoneRadiusEntry);
+            LethalConfigManager.AddConfigItem(stakeFreeChanceEntry);
+            LethalConfigManager.AddConfigItem(stakeFailDmgEntry);
             //LethalConfigManager.AddConfigItem(thrashSlider);
         }
     }
