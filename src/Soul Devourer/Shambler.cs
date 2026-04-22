@@ -354,12 +354,13 @@ namespace SoulDev
                 // if we left Walk, clear the latches so they're ready next time
                 stepSoundCycle1 = stepSoundCycle2 = false;
             }
-            // anger sound with cooldown
-            if (alertLevel > sneakyAlertLevel && RoundManager.Instance.IsHost)
+            // anger expression section
+            if (alertLevel > (sneakyAlertLevel-5) && RoundManager.Instance.IsHost)
             {
-                if (angerSoundTimer <= 0)
+                // beating chest
+                if (angerSoundTimer <= 0 && FitToAssertDominance())
                 {
-                    angerSoundTimer = 5;
+                    angerSoundTimer = (float)(7 * enemyRandom.NextDouble() + 5f);
                     moaiSoundPlayClientRpc("creatureAnger");
                     DoAssertDominanceClientRpc();
                 }
@@ -369,6 +370,7 @@ namespace SoulDev
                 angerSoundTimer -= Time.deltaTime;
             }
             if (targetPlayer != null && targetPlayer.isPlayerDead) { targetPlayer = null; }
+
             // CRITICAL: do not allow base chase override when we are using a custom goal
             movingTowardsTargetPlayer = (targetPlayer != null) && !usingCustomGoal;
             timeSinceHittingLocalPlayer += Time.deltaTime;
@@ -590,7 +592,7 @@ namespace SoulDev
             {
                 Think("DoSneakyStab");
                 DoAnimationClientRpc(7);
-                animPlayClientRpc("SneakyStab");
+                AnimPlayClientRpc("SneakyStab");
                 moaiSoundPlayClientRpc("creatureSneakyStab");
                 yield return new WaitForSeconds(0.4f);
                 stabbedPlayer = getNearestPlayer();
@@ -660,7 +662,7 @@ namespace SoulDev
                 }
                 SwitchToBehaviourClientRpc((int)State.SearchingForPlayer);
                 DoAnimationClientRpc(0);
-                animPlayClientRpc("Idle");
+                AnimPlayClientRpc("Idle");
                 StartSearch(transform.position);
                 Think("Switched to searching for player");
             }
@@ -671,7 +673,7 @@ namespace SoulDev
         {
             Think("DoStab");
             DoAnimationClientRpc(5);
-            animPlayClientRpc("StabVictimHeld");
+            AnimPlayClientRpc("StabVictimHeld");
             moaiSoundPlayClientRpc("creatureStab");
             if (capturedPlayer)
             {
@@ -743,7 +745,7 @@ namespace SoulDev
             Think("DoGroundHop");
             if (RoundManager.Instance.IsHost)
             {
-                animPlayClientRpc("Leap-Land");
+                AnimPlayClientRpc("Leap-Land");
                 moaiSoundPlayClientRpc("creatureLeapLand");
             }
             transform.position = shamblerStartPos;
@@ -765,7 +767,7 @@ namespace SoulDev
             Think("Landing...");
             if (RoundManager.Instance.IsHost)
             {
-                animPlayClientRpc("Land-Capture");
+                AnimPlayClientRpc("Land-Capture");
                 // if the player is within a set area, capture them
                 AttemptCapturePlayer();
                 DoAnimationClientRpc(4);
@@ -844,7 +846,7 @@ namespace SoulDev
         {
             agent.speed = 0f;
             DoAnimationClientRpc(2);
-            animPlayClientRpc("Crouching");
+            AnimPlayClientRpc("Crouching");
             Debug.Log("Crouching... timer: " + crouchTimer);
             crouchTimeout -= 0.2f;
             var ply = (targetPlayer != null && PlayerIsTargetable(targetPlayer)) ? targetPlayer : getNearestPlayer();
@@ -1294,12 +1296,12 @@ namespace SoulDev
             if (agent.velocity.magnitude > (agent.speed / 4))
             {
                 if (RoundManager.Instance.IsServer) { DoAnimationClientRpc(1); }
-                setParamClientRpc("WalkSpeed", agent.velocity.magnitude / walkAnimationCoefficient);
+                SetParamClientRpc("WalkSpeed", agent.velocity.magnitude / walkAnimationCoefficient);
             }
             else if (agent.velocity.magnitude <= (agent.speed / 8))
             {
                 if (RoundManager.Instance.IsServer) { DoAnimationClientRpc(0); }
-                setParamClientRpc("WalkSpeed", 1);
+                SetParamClientRpc("WalkSpeed", 1);
             }
             // pick valid target
             var ply = (targetPlayer != null && PlayerIsTargetable(targetPlayer)) ? targetPlayer : getNearestPlayer();
@@ -1314,8 +1316,8 @@ namespace SoulDev
             // Visibility bookkeeping at current position
             bool seenNow = IsVisibleToAnyPlayers(transform.position);
             if (seenNow) lastSeenTime = Time.time;
-            // prepare to leap if the player sees us and is close
-            if (alertLevel >= 70 && Vector3.Distance(getNearestPlayer().transform.position, transform.position) < maxLeapDistance / 1.5)
+            // prepare to leap if the player sees us, a warning has been made and is close
+            if (alertLevel >= 70 && !assertingDominance && Vector3.Distance(getNearestPlayer().transform.position, transform.position) < maxLeapDistance / 1.5)
             {
                 SwitchToBehaviourClientRpc((int)State.Crouching);
                 crouchTimer = (float)(0.5 + (enemyRandom.NextDouble() * 1.5));
@@ -1453,12 +1455,12 @@ namespace SoulDev
             if (agent.velocity.magnitude > (agent.speed / 4))
             {
                 if (RoundManager.Instance.IsServer) { DoAnimationClientRpc(1); }
-                setParamClientRpc("WalkSpeed", agent.velocity.magnitude / walkAnimationCoefficient);
+                SetParamClientRpc("WalkSpeed", agent.velocity.magnitude / walkAnimationCoefficient);
             }
             else if (agent.velocity.magnitude <= (agent.speed / 8))
             {
                 if (RoundManager.Instance.IsServer) { DoAnimationClientRpc(0); }
-                setParamClientRpc("WalkSpeed", 1);
+                SetParamClientRpc("WalkSpeed", 1);
             }
             // sound switch
             if (!creatureVoice.isPlaying)
@@ -1520,12 +1522,12 @@ namespace SoulDev
             if (agent.velocity.magnitude > (agent.speed / 4))
             {
                 if (RoundManager.Instance.IsServer) { DoAnimationClientRpc(1); }
-                setParamClientRpc("WalkSpeed", agent.velocity.magnitude / walkAnimationCoefficient);
+                SetParamClientRpc("WalkSpeed", agent.velocity.magnitude / walkAnimationCoefficient);
             }
             else if (agent.velocity.magnitude <= (agent.speed / 8))
             {
                 if (RoundManager.Instance.IsServer) { DoAnimationClientRpc(0); }
-                setParamClientRpc("WalkSpeed", 1);
+                SetParamClientRpc("WalkSpeed", 1);
             }
             SetDestinationToPosition(nestSpot);
             if (Vector3.Distance(transform.position, nestSpot) < 15f)
@@ -1576,7 +1578,7 @@ namespace SoulDev
                 agent.updateRotation = true;
                 isPlanting = false;
                 donePlant = false;
-                animPlayClientRpc("Idle");
+                AnimPlayClientRpc("Idle");
                 StartSearch(transform.position);
                 SwitchToBehaviourClientRpc((int)State.SearchingForPlayer);
                 StartSearch(transform.position);
@@ -1602,7 +1604,7 @@ namespace SoulDev
             }
             //Think("DoPlant");
             DoAnimationClientRpc(6);
-            animPlayClientRpc("PlantStake");
+            AnimPlayClientRpc("PlantStake");
             moaiSoundPlayClientRpc("creaturePlant");
             plantTime = Time.time;
             if (stabbedPlayer)
@@ -1667,12 +1669,12 @@ namespace SoulDev
             if (agent.velocity.magnitude > (agent.speed / 4))
             {
                 if (RoundManager.Instance.IsServer) { DoAnimationClientRpc(1); }
-                setParamClientRpc("WalkSpeed", agent.velocity.magnitude / walkAnimationCoefficient);
+                SetParamClientRpc("WalkSpeed", agent.velocity.magnitude / walkAnimationCoefficient);
             }
             else if (agent.velocity.magnitude <= (agent.speed / 8))
             {
                 if (RoundManager.Instance.IsServer) { DoAnimationClientRpc(0); }
-                setParamClientRpc("WalkSpeed", 1);
+                SetParamClientRpc("WalkSpeed", 1);
             }
             SetDestinationToPosition(nearestEntranceNavPosition);
             if (this.isOutside != nearestEntrance.isEntranceToBuilding || this.agent.pathStatus == NavMeshPathStatus.PathPartial)
@@ -2012,7 +2014,7 @@ namespace SoulDev
         {
             creatureSFX.Stop();
             creatureVoice.Stop();
-            creatureAnger.Stop();
+            //creatureAnger.Stop(); currently part of a controlled coroutine
             creatureLaugh.Stop();
             creatureLeapLand.Stop();
             //creatureSneakyStab.Stop();
@@ -2085,6 +2087,7 @@ namespace SoulDev
         // this layer causes the shambler to beat its chest angrily
         // afterwards, release the layer authority
         bool assertingDominance = false;  // guard for asserting dominance
+        bool givenWarning = false;
         public IEnumerator DoAssertDominance()
         {
             try
@@ -2142,9 +2145,25 @@ namespace SoulDev
             StartCoroutine(DoAssertDominance());
         }
 
+        public bool FitToAssertDominance()
+        {
+            if(!targetPlayer) { return false; }
+
+            // only allowed to assert dominance if facing the player (90 degree cone)
+            Vector3 toPlayer = (targetPlayer.transform.position - transform.position).normalized;
+            float angle = Vector3.Angle(transform.forward, toPlayer);
+            if (angle > 90f) { return false; }
+
+            // only allowed to assert dominance if heading towards a destination
+            // that is within leap distance
+            if (Vector3.Distance(agent.destination, targetPlayer.transform.position) > maxLeapDistance) { return false; }
+
+            return currentBehaviourStateIndex == (int)State.ClosingDistance;
+        }
+
         // ensure the stateName indicates the intent
         [ClientRpc]
-        public void setParamClientRpc(String param, float speed)
+        public void SetParamClientRpc(String param, float speed)
         {
             animator.SetFloat(param, speed);
         }
@@ -2157,6 +2176,6 @@ namespace SoulDev
             if (this.animator) { this.animator.SetInteger("state", index); }
         }
         [ClientRpc]
-        public void animPlayClientRpc(String name) => animator.Play(name);
+        public void AnimPlayClientRpc(String name) => animator.Play(name);
     }
 }
