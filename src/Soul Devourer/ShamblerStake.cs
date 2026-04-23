@@ -1,6 +1,7 @@
 ﻿using GameNetcodeStuff;
 using SoulDev;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Unity.Netcode;
 using UnityEngine;
@@ -16,6 +17,11 @@ namespace Shambler.src.Soul_Devourer
         private InteractTrigger envTrigger;
         public AudioSource failEscapeSource;
         public AudioSource successSource;
+
+
+        // list is managed to ensure that a player can't get attached to 2 stakes at once, ever
+        public static List<PlayerControllerB> capturedPlayers = new List<PlayerControllerB>();
+
         public float damageTimer = 20f; // how often the spike deals dmg
         int freeChance = -1;  // each time someone tries to free themselves, the chance of freedom increases
         int dmgPunishment = 10;  // punishment for failing a free attempt
@@ -64,6 +70,27 @@ namespace Shambler.src.Soul_Devourer
         public void StartSetupClientRpc()
         {
             if (victim == null) { victim = NearestPlayer(); }
+
+            if (RoundManager.Instance.IsHost)
+            {
+                try
+                {
+                    var stakes = FindObjectsOfType<ShamblerStake>();
+
+                    // free player from any other stakes they may be attached to
+                    foreach (var stake in stakes)
+                    {
+                        if (stake.victim.NetworkObjectId == victim.NetworkObjectId && stake.NetworkObjectId != NetworkObjectId)
+                        {
+                            stake.freeChance = 100;
+                            stake.AttemptFree(victim);
+                        }
+                    }
+                    capturedPlayers.Add(victim);
+                }
+                catch(Exception e) { Debug.LogError(e); }
+            }
+
             var plylocal = RoundManager.Instance.playersManager.localPlayerController;
             envTrigger = GetComponent<InteractTrigger>();
             if (victim != null && victim.NetworkObject.NetworkObjectId == plylocal.NetworkObject.NetworkObjectId)
@@ -210,7 +237,7 @@ namespace Shambler.src.Soul_Devourer
                 owner.StakeNotify(victim);
             }
             IsFreeing = false;
-            if (UnityEngine.Random.RandomRangeInt(0, 100) < Plugin.stakeFreeChance.Value || (caller.NetworkObject.NetworkObjectId != victim.NetworkObject.NetworkObjectId))
+            if (UnityEngine.Random.RandomRangeInt(0, 100) < freeChance || (caller.NetworkObject.NetworkObjectId != victim.NetworkObject.NetworkObjectId))
             {
                 if (victim)
                 {
