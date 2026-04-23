@@ -63,6 +63,9 @@ namespace SoulDev
         public AudioSource creatureTakeDmg;
         public AudioSource creatureFrustrated;
         public AudioSource[] creatureSteps;
+
+        public static List<ShamblerEnemy> shamblerInstances = new List<ShamblerEnemy>();
+
         // animation vars (new)
         protected float runAnimationCoefficient = 14f;
         protected float walkAnimationCoefficient = 3f;
@@ -112,8 +115,27 @@ namespace SoulDev
                 transform.rotation = Quaternion.Euler(0f, targetRotation.eulerAngles.y, 0f);
             }
         }
+
+        public bool PlayerHeldByAnyShambler(PlayerControllerB ply)
+        {
+            try
+            {
+                foreach (var shamb in shamblerInstances)
+                {
+                    if (shamb.capturedPlayer && shamb.capturedPlayer.NetworkObjectId == ply.NetworkObjectId)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            catch(Exception e) { Debug.LogError(e); }
+            return false;
+        }
+
         public override void OnDestroy()
         {
+            shamblerInstances.Remove(this);
             base.OnDestroy();
         }
         public PlayerControllerB getNearestPlayer(bool addFilter = true)
@@ -179,6 +201,7 @@ namespace SoulDev
             if (RoundManager.Instance.IsHost)
             {
                 this.DoAnimationClientRpc(0);
+                shamblerInstances.Add(this);
             }
             stamina = 120;
             timeSinceHittingLocalPlayer = 0;
@@ -840,6 +863,7 @@ namespace SoulDev
                         Think("Shambler: I GOTCHA");
                         capturedPlayer = ply;
                         stabbedCapturedPlayer = false;
+                        ply.CancelSpecialTriggerAnimations();
                         attachPlayerClientRpc(capturedPlayer.NetworkObject.NetworkObjectId, false, 50);
                         timeTillStab = (float)(2f + (30f * enemyRandom.NextDouble() * enemyRandom.NextDouble() * enemyRandom.NextDouble()));
                         DmgPlayerClientRpc(ply.NetworkObject.NetworkObjectId, 20);
@@ -1840,6 +1864,7 @@ namespace SoulDev
         {
             if (ply == null || ply.NetworkObject == null) return false;
             if (PlayerInsideSafeZone(ply)) { return false; }  // can't target players a certain distance from the ship
+            if(PlayerHeldByAnyShambler(ply)) { return false; } // can't target players held by other shamblers
             //if(InsideSafeZone()) { return false;  }  // the shambler shouldn't be in this radius either
 
             if (EscapingEmployees.Contains(ply.NetworkObject.NetworkObjectId))

@@ -21,7 +21,6 @@ namespace Shambler.src.Soul_Devourer
 
         // list is managed to ensure that a player can't get attached to 2 stakes at once, ever
         public static List<PlayerControllerB> capturedPlayers = new List<PlayerControllerB>();
-
         public float damageTimer = 20f; // how often the spike deals dmg
         int freeChance = -1;  // each time someone tries to free themselves, the chance of freedom increases
         int dmgPunishment = 10;  // punishment for failing a free attempt
