@@ -363,12 +363,14 @@ namespace SoulDev
                 if (angerSoundTimer <= 0 && FitToAssertDominance())
                 {
                     angerSoundTimer = (float)(7 * enemyRandom.NextDouble() + 5f);
+                    angerSoundTimer2 += 2.5f;
                     moaiSoundPlayClientRpc("creatureAnger");
                     DoAssertDominanceClientRpc();
                 }
                 else if(angerSoundTimer2 <= 0 && FitToExpressFrustration())
                 {
                     angerSoundTimer2 = (float)(7 * enemyRandom.NextDouble() + 5f);
+                    angerSoundTimer += 2.5f;
                     moaiSoundPlayClientRpc("creatureFrustrated");
                     DoExpressFrustrationClientRpc();
                 }
@@ -868,6 +870,16 @@ namespace SoulDev
                 SwitchToBehaviourClientRpc((int)State.SearchingForPlayer);
                 return;
             }
+
+            // sneaky stab a player that gets too close when crouching
+            if (Vector3.Distance(transform.position, ply.transform.position) <= maxStabDistance)
+            {
+                doneStab = false;
+                isStabbing = false;
+                SwitchToBehaviourClientRpc((int)State.SneakyStab);
+                return;
+            }
+
             crouchTimer -= 0.2f;
             if (crouchTimer <= 0)
             {
@@ -1344,6 +1356,18 @@ namespace SoulDev
                 SwitchToBehaviourClientRpc((int)State.SneakyStab);
                 return;
             }
+
+            // stab the player in the front if we are very close and directly facing the player
+            // also requires no leg independent coroutine to be playing AND no captured player
+            if (FitToAssertDominance() && !capturedPlayer && !inLegIndependentCoroutine && targetPlayer && Vector3.Distance(targetPlayer.transform.position, transform.position) < maxStabDistance)
+            {
+                doneStab = false;
+                isStabbing = false;
+                SwitchToBehaviourClientRpc((int)State.SneakyStab);
+                return;
+            }
+
+
             // If we're in cover, lock there briefly to avoid peek oscillation
             bool inCoverNow = !seenNow;
             if (inCoverNow && Time.time < coverLockUntil)
