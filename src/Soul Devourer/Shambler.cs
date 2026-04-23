@@ -126,6 +126,11 @@ namespace SoulDev
                     {
                         return true;
                     }
+
+                    if (shamb.stabbedPlayer && shamb.stabbedPlayer.NetworkObjectId == ply.NetworkObjectId)
+                    {
+                        return true;
+                    }
                 }
                 return false;
             }
@@ -206,8 +211,8 @@ namespace SoulDev
             if (RoundManager.Instance.IsHost)
             {
                 this.DoAnimationClientRpc(0);
-                shamblerInstances.Add(this);
             }
+            shamblerInstances.Add(this);
             stamina = 120;
             timeSinceHittingLocalPlayer = 0;
             timeSinceNewRandPos = 0;
@@ -252,6 +257,9 @@ namespace SoulDev
         public override void Update()
         {
             base.Update();
+
+            // bug fix, enforce rotation at root level for client (otherwise a weird x and z rotation desync happens)
+            transform.rotation = Quaternion.Euler(0f, transform.rotation.eulerAngles.y, 0f);
 
             this.animator.speed = 1; // no global control of animations allowed
             sizeCheckCooldown -= Time.deltaTime;
@@ -1389,7 +1397,7 @@ namespace SoulDev
 
             // stab the player in the front if we are very close and directly facing the player
             // also requires no leg independent coroutine to be playing AND no captured player
-            if (FitToAssertDominance() && !capturedPlayer && !inLegIndependentCoroutine && targetPlayer && Vector3.Distance(targetPlayer.transform.position, transform.position) < maxStabDistance)
+            if (FitToAssertDominance() && !capturedPlayer && !inLegIndependentCoroutine && targetPlayer && Vector3.Distance(targetPlayer.transform.position, transform.position) < maxStabDistance )
             {
                 doneStab = false;
                 isStabbing = false;
@@ -1871,6 +1879,12 @@ namespace SoulDev
             if (ply == null || ply.NetworkObject == null) return false;
             if (PlayerInsideSafeZone(ply)) { return false; }  // can't target players a certain distance from the ship
             if(PlayerHeldByAnyShambler(ply)) { return false; } // can't target players held by other shamblers
+            // Normal qualification rules
+            if (ply == capturedPlayer || ply == stabbedPlayer) return false;
+            if (ply == capturedPlayer || ply == stabbedPlayer) return false;
+            if (IsPlayerStaked(ply)) return false;
+            if (ply.isPlayerDead || !ply.isPlayerControlled) return false;
+
             //if(InsideSafeZone()) { return false;  }  // the shambler shouldn't be in this radius either
 
             if (EscapingEmployees.Contains(ply.NetworkObject.NetworkObjectId))
@@ -1905,11 +1919,6 @@ namespace SoulDev
                 }
             }
             if (ply == RageTarget) { return true; }
-            // Normal qualification rules
-            if (ply == capturedPlayer || ply == stabbedPlayer) return false;
-            if (ply == capturedPlayer || ply == stabbedPlayer) return false;
-            if (IsPlayerStaked(ply)) return false;
-            if (ply.isPlayerDead || !ply.isPlayerControlled) return false;
             return true;
         }
         public async void ClearRageTarget()
