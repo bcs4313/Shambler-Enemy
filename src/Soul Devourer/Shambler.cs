@@ -872,7 +872,7 @@ namespace SoulDev
             {
                 if (Vector3.Distance(ply.transform.position, transform.position) < captureRange)
                 {
-                    if (ply != capturedPlayer)
+                    if (ply != capturedPlayer && ply != stabbedPlayer)
                     {
                         Think("Shambler: I GOTCHA");
                         capturedPlayer = ply;
@@ -885,7 +885,7 @@ namespace SoulDev
                     }
                     else
                     {
-                        DmgPlayerClientRpc(ply.NetworkObject.NetworkObjectId, 70);
+                        //DmgPlayerClientRpc(ply.NetworkObject.NetworkObjectId, 70);
                     }
                 }
             }

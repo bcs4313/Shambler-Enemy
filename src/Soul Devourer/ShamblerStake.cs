@@ -70,6 +70,11 @@ namespace Shambler.src.Soul_Devourer
         {
             if (victim == null) { victim = NearestPlayer(); }
 
+            if(freeChance == -1)
+            {
+                freeChance = Plugin.stakeFreeChance.Value;
+            }
+
             if (RoundManager.Instance.IsHost)
             {
                 try
