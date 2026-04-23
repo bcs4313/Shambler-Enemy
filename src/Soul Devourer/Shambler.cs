@@ -86,7 +86,7 @@ namespace SoulDev
         public bool debugThoughts = true;
         public bool debugDrawGoal = true;
         private Vector3 lastGoal = Vector3.zero;
-        private float lastGoalScore = 0f;
+
         // When true we are explicitly following our own waypoint (not base chase)
         private bool usingCustomGoal = false;
         private void Think(string msg)
@@ -164,20 +164,25 @@ namespace SoulDev
         }
         public void SetAudioVolumes()
         {
-            creatureAnger.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
-            creatureDeath.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
-            creatureLaugh.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
-            creatureLeapLand.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
-            creaturePlant.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
-            creatureSFX.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
-            creatureSneakyStab.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
-            creatureStab.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
-            creatureTakeDmg.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
-            creatureVoice.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
-            foreach (var aud in creatureSteps)
+            try
             {
-                aud.volume = creatureAnger.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
+                creatureAnger.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
+                creatureDeath.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
+                creatureLaugh.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
+                creatureLeapLand.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
+                creaturePlant.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
+                creatureSFX.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
+                creatureSneakyStab.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
+                creatureStab.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
+                creatureTakeDmg.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
+                creatureVoice.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
+                creatureFrustrated.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
+                foreach (var aud in creatureSteps)
+                {
+                    aud.volume = creatureAnger.volume *= (Plugin.moaiGlobalMusicVol.Value / 0.6f);
+                }
             }
+            catch(Exception e) { Debug.LogError(e); }
         }
         public override void Start()
         {
@@ -234,6 +239,7 @@ namespace SoulDev
 
             // leg independent layer
             animator.SetLayerWeight(1, 0f);
+            SetAudioVolumes();
         }
         private static bool IsPlayerStaked(PlayerControllerB p)
         {
@@ -270,7 +276,7 @@ namespace SoulDev
                 this.stopAllSound();
                 if (!animator.GetCurrentAnimatorStateInfo(0).IsName("Death") && !animator.GetCurrentAnimatorStateInfo(0).IsName("Exit"))
                 {
-                    animator.Play("Death");
+                    animator.Play("Death", 0, 0f);
                 }
                 isEnemyDead = true;
                 enemyHP = 0;
